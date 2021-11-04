@@ -3,6 +3,7 @@ use crate::counter::{
     Bar, Instrument, Level1, Level2, QuoteEvent, TickToOffer, TickToTrade, TradeEvent,
 };
 use anyhow::Result;
+use dashmap::DashMap;
 use lazy_static::lazy_static;
 use parking_lot::RwLock;
 use std::collections::{BTreeMap, HashMap};
@@ -16,7 +17,7 @@ lazy_static! {
     //图表
     static ref BARS: RwLock<HashMap<String, Vec<Bar>>> = RwLock::new(HashMap::new());
     //LEVEL1行情
-    static ref LEVEL1S: RwLock<BTreeMap<String, Level1>> = RwLock::new(BTreeMap::new());
+    static ref LEVEL1S: DashMap<String, Level1> = DashMap::new();
     //深度行情
     static ref DEPTHS: RwLock<HashMap<String, Level2>> = RwLock::new(HashMap::new());
     //逐笔委托
@@ -55,9 +56,8 @@ pub fn get_tick2trade(security_id: &String) -> Option<Vec<TickToTrade>> {
 }
 
 pub fn get_level1(security_id: &String) -> Option<Level1> {
-    let map = LEVEL1S.read();
-    if let Some(level1) = map.get(security_id) {
-        Some(level1.clone())
+    if let Some(level1) = LEVEL1S.get(security_id) {
+        Some(level1.value().clone())
     } else {
         None
     }
@@ -65,8 +65,8 @@ pub fn get_level1(security_id: &String) -> Option<Level1> {
 
 pub fn get_all_level1() -> Option<Vec<Level1>> {
     log::trace!("get_all_level1",);
-    let map = LEVEL1S.read();
-    let mut data: Vec<Level1> = map.values().into_iter().map(|v| v.clone()).collect();
+    //let map = LEVEL1S.read();
+    let mut data: Vec<Level1> = LEVEL1S.iter().map(|item| item.value().clone()).collect();
     if data.len() > 0 {
         log::trace!("get_all_level1 {:?}", data);
         data.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap());
@@ -77,11 +77,10 @@ pub fn get_all_level1() -> Option<Vec<Level1>> {
 }
 
 pub fn find_level1_with_prefix(prefix: &str) -> Option<Vec<Level1>> {
-    let map = LEVEL1S.read();
-    let mut data: Vec<Level1> = map
+    let mut data: Vec<Level1> = LEVEL1S
         .iter()
-        .filter(|(k, _)| k.starts_with(prefix))
-        .map(|(_, v)| v.clone())
+        .filter(|item| item.key().starts_with(prefix))
+        .map(|item| item.value().clone())
         .collect();
     if data.len() > 0 {
         data.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap());
@@ -175,13 +174,13 @@ fn process(topic: Topic, ev: Arc<Event>) {
         match quote {
             QuoteEvent::Level1(level1) => {
                 {
-                    let mut map = LEVEL1S.write();
-                    if let Some(old) = map.get(&level1.security_id) {
-                        let mut l1 = level1.clone();
+                    // let mut map = LEVEL1S.write();
+                    if let Some(old) = LEVEL1S.get(&level1.security_id) {
+                        let mut l1 = old.value().clone();
                         l1.score += old.score;
-                        map.insert(l1.security_id.clone(), l1);
+                        LEVEL1S.insert(l1.security_id.clone(), l1);
                     } else {
-                        map.insert(level1.security_id.clone(), level1.clone());
+                        LEVEL1S.insert(level1.security_id.clone(), level1.clone());
                     }
                 }
                 let bar = Bar {
