@@ -1,32 +1,30 @@
 use crate::bus::{self, topics, Event, Topic};
 use crate::counter::{Order, TradeEvent, Transaction};
 use anyhow::Result;
+use dashmap::DashMap;
 use lazy_static::lazy_static;
-use parking_lot::RwLock;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::sync::Arc;
 
 lazy_static! {
     //订单
-    static ref ORDERS: RwLock<HashMap<String, Vec<Order>>> = RwLock::new(HashMap::new());
+    static ref ORDERS: DashMap<String, Vec<Order>> = DashMap::new();
 
     //成交记录
-    static ref TRANSACTIONS: RwLock<HashMap<String,BTreeMap<String,Vec<Transaction>> >> = RwLock::new(HashMap::new());
+    static ref TRANSACTIONS: DashMap<String, BTreeMap<String,Vec<Transaction>>> = DashMap::new();
 
 }
 
 pub fn get_order(security_id: &String) -> Option<Vec<Order>> {
-    let map = ORDERS.read();
-    if let Some(positions) = map.get(security_id) {
-        Some(positions.clone())
+    if let Some(positions) = ORDERS.get(security_id) {
+        Some(positions.value().clone())
     } else {
         None
     }
 }
 
 pub fn get_all_order() -> Option<Vec<Order>> {
-    let map = ORDERS.read();
-    let data: Vec<Vec<Order>> = map.values().into_iter().map(|v| v.clone()).collect();
+    let data: Vec<Vec<Order>> = ORDERS.iter().map(|v| v.value().clone()).collect();
     if data.len() > 0 {
         Some(data.concat())
     } else {
@@ -35,10 +33,9 @@ pub fn get_all_order() -> Option<Vec<Order>> {
 }
 
 pub fn get_transaction(security_id: &String) -> Option<Vec<Transaction>> {
-    let map = TRANSACTIONS.read();
-    if let Some(positions) = map.get(security_id) {
+    if let Some(positions) = TRANSACTIONS.get(security_id) {
         let data: Vec<Vec<Transaction>> =
-            positions.values().into_iter().map(|v| v.clone()).collect();
+            positions.value().iter().map(|(_, v)| v.clone()).collect();
         Some(data.concat())
     } else {
         None
@@ -46,11 +43,9 @@ pub fn get_transaction(security_id: &String) -> Option<Vec<Transaction>> {
 }
 
 pub fn get_all_transaction() -> Option<Vec<Transaction>> {
-    let map = TRANSACTIONS.read();
-    let data: Vec<Vec<Vec<Transaction>>> = map
-        .values()
-        .into_iter()
-        .map(|v| v.values().into_iter().map(|v| v.clone()).collect())
+    let data: Vec<Vec<Vec<Transaction>>> = TRANSACTIONS
+        .iter()
+        .map(|v| v.value().values().into_iter().map(|v| v.clone()).collect())
         .collect();
     if data.len() > 0 {
         Some(data.concat().concat())
@@ -63,9 +58,8 @@ pub fn get_all_transaction_with_order_id(
     security_id: &String,
     order_id: &String,
 ) -> Option<Vec<Transaction>> {
-    let map = TRANSACTIONS.read();
-    if let Some(trans) = map.get(security_id) {
-        if let Some(tx) = trans.get(order_id) {
+    if let Some(trans) = TRANSACTIONS.get(security_id) {
+        if let Some(tx) = trans.value().get(order_id) {
             Some(tx.clone())
         } else {
             None
@@ -85,13 +79,12 @@ fn process(topic: Topic, ev: Arc<Event>) {
     if let Event::Trade(tev) = ev.as_ref() {
         match tev {
             TradeEvent::Offer(pos) => {
-                let mut map = ORDERS.write();
-                if let Some(positions) = map.get_mut(pos.security_id()) {
-                    positions.push(pos.clone());
+                if let Some(mut positions) = ORDERS.get_mut(pos.security_id()) {
+                    positions.value_mut().push(pos.clone());
                 } else {
                     let mut positions = vec![];
                     positions.push(pos.clone());
-                    map.insert(pos.security_id().into(), positions);
+                    ORDERS.insert(pos.security_id().into(), positions);
                 }
             }
             _ => {}

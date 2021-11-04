@@ -13,3 +13,5 @@ Cargo.lock
 # Added by cargo
 
 /target
+qbox-cli/qbox.sim24.toml
+qbox-cli/logs/qbox_qbox-cli.log

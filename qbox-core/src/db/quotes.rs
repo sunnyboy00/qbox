@@ -5,8 +5,6 @@ use crate::counter::{
 use anyhow::Result;
 use dashmap::DashMap;
 use lazy_static::lazy_static;
-use parking_lot::RwLock;
-use std::collections::{BTreeMap, HashMap};
 use std::sync::Arc;
 
 const MAX_BAR_SIZE: usize = 1000;
@@ -15,41 +13,38 @@ const MAX_TTT_SIZE: usize = 100;
 
 lazy_static! {
     //图表
-    static ref BARS: RwLock<HashMap<String, Vec<Bar>>> = RwLock::new(HashMap::new());
+    static ref BARS: DashMap<String, Vec<Bar>> = DashMap::new();
     //LEVEL1行情
     static ref LEVEL1S: DashMap<String, Level1> = DashMap::new();
     //深度行情
-    static ref DEPTHS: RwLock<HashMap<String, Level2>> = RwLock::new(HashMap::new());
+    static ref DEPTHS: DashMap<String, Level2> = DashMap::new();
     //逐笔委托
-    static ref TTOS: RwLock<HashMap<String, Vec<TickToOffer>>> = RwLock::new(HashMap::new());
+    static ref TTOS: DashMap<String, Vec<TickToOffer>> = DashMap::new();
     //逐笔成交
-    static ref TTTS: RwLock<HashMap<String, Vec<TickToTrade>>> = RwLock::new(HashMap::new());
+    static ref TTTS: DashMap<String, Vec<TickToTrade>> = DashMap::new();
     //证券列表
-    static ref INSTRUMENTS: RwLock<HashMap<String, Instrument>> = RwLock::new(HashMap::new());
+    static ref INSTRUMENTS: DashMap<String, Instrument> = DashMap::new();
 }
 
 pub fn get_bar(security_id: &String) -> Option<Vec<Bar>> {
-    let map = BARS.read();
-    if let Some(bars) = map.get(security_id) {
-        Some(bars.clone())
+    if let Some(bars) = BARS.get(security_id) {
+        Some(bars.value().clone())
     } else {
         None
     }
 }
 
 pub fn get_tick2offer(security_id: &String) -> Option<Vec<TickToOffer>> {
-    let map = TTOS.read();
-    if let Some(ttos) = map.get(security_id) {
-        Some(ttos.clone())
+    if let Some(ttos) = TTOS.get(security_id) {
+        Some(ttos.value().clone())
     } else {
         None
     }
 }
 
 pub fn get_tick2trade(security_id: &String) -> Option<Vec<TickToTrade>> {
-    let map = TTTS.read();
-    if let Some(ttts) = map.get(security_id) {
-        Some(ttts.clone())
+    if let Some(ttts) = TTTS.get(security_id) {
+        Some(ttts.value().clone())
     } else {
         None
     }
@@ -105,17 +100,15 @@ pub fn find_level1_with_prefixs(prefixs: &[&str]) -> Option<Vec<Level1>> {
 }
 
 pub fn get_instrument(security_id: &String) -> Option<Instrument> {
-    let map = INSTRUMENTS.read();
-    if let Some(level1) = map.get(security_id) {
-        Some(level1.clone())
+    if let Some(level1) = INSTRUMENTS.get(security_id) {
+        Some(level1.value().clone())
     } else {
         None
     }
 }
 
 pub fn get_all_instrument() -> Option<Vec<Instrument>> {
-    let map = INSTRUMENTS.read();
-    let data: Vec<Instrument> = map.values().into_iter().map(|v| v.clone()).collect();
+    let data: Vec<Instrument> = INSTRUMENTS.iter().map(|v| v.value().clone()).collect();
     if data.len() > 0 {
         Some(data)
     } else {
@@ -124,11 +117,10 @@ pub fn get_all_instrument() -> Option<Vec<Instrument>> {
 }
 
 pub fn find_instrument_with_prefix(prefix: &str) -> Option<Vec<Instrument>> {
-    let map = INSTRUMENTS.read();
-    let data: Vec<Instrument> = map
+    let data: Vec<Instrument> = INSTRUMENTS
         .iter()
-        .filter(|(k, _)| k.starts_with(prefix))
-        .map(|(_, v)| v.clone())
+        .filter(|v| v.key().starts_with(prefix))
+        .map(|v| v.value().clone())
         .collect();
     if data.len() > 0 {
         Some(data)
@@ -155,9 +147,8 @@ pub(crate) fn init() -> Result<()> {
     std::fs::create_dir_all(&path)?;
     if let Ok(b) = std::fs::read(path.join("symbols.txt")) {
         if let Ok(list) = ron::de::from_bytes::<Vec<Instrument>>(&b[..]) {
-            let mut map = INSTRUMENTS.write();
             list.into_iter().for_each(|instr| {
-                map.insert(instr.security_id.clone(), instr);
+                INSTRUMENTS.insert(instr.security_id.clone(), instr);
             });
         }
     }
@@ -201,52 +192,47 @@ fn process(topic: Topic, ev: Arc<Event>) {
                 bus::quotes_event(QuoteEvent::Bar(bar)).ok();
             }
             QuoteEvent::Bar(bar) => {
-                let mut map = BARS.write();
-                if let Some(bars) = map.get_mut(&bar.security_id) {
-                    bars.push(bar.clone());
+                if let Some(mut bars) = BARS.get_mut(&bar.security_id) {
+                    bars.value_mut().push(bar.clone());
                     if bars.len() > MAX_BAR_SIZE {
                         bars.remove(0);
                     }
                 } else {
                     let mut bars = Vec::with_capacity(MAX_BAR_SIZE);
                     bars.push(bar.clone());
-                    map.insert(bar.security_id.clone(), bars);
+                    BARS.insert(bar.security_id.clone(), bars);
                 }
             }
             QuoteEvent::Level2(level2) => {
-                let mut map = DEPTHS.write();
-                map.insert(level2.security_id.clone(), level2.clone());
+                DEPTHS.insert(level2.security_id.clone(), level2.clone());
             }
             QuoteEvent::TickToOffer(tto) => {
-                let mut map = TTOS.write();
-                if let Some(ttos) = map.get_mut(&tto.security_id) {
-                    ttos.push(tto.clone());
+                if let Some(mut ttos) = TTOS.get_mut(&tto.security_id) {
+                    ttos.value_mut().push(tto.clone());
                     if ttos.len() > MAX_TTO_SIZE {
                         ttos.remove(0);
                     }
                 } else {
                     let mut ttos = Vec::with_capacity(MAX_TTO_SIZE);
                     ttos.push(tto.clone());
-                    map.insert(tto.security_id.clone(), ttos);
+                    TTOS.insert(tto.security_id.clone(), ttos);
                 }
             }
             QuoteEvent::TickToTrade(ttt) => {
-                let mut map = TTTS.write();
-                if let Some(ttts) = map.get_mut(&ttt.security_id) {
-                    ttts.push(ttt.clone());
+                if let Some(mut ttts) = TTTS.get_mut(&ttt.security_id) {
+                    ttts.value_mut().push(ttt.clone());
                     if ttts.len() > MAX_TTT_SIZE {
                         ttts.remove(0);
                     }
                 } else {
                     let mut ttts = Vec::with_capacity(MAX_TTT_SIZE);
                     ttts.push(ttt.clone());
-                    map.insert(ttt.security_id.clone(), ttts);
+                    TTTS.insert(ttt.security_id.clone(), ttts);
                 }
             }
         }
     } else if let Event::Trade(TradeEvent::InstrumentsResponse(instr)) = ev.as_ref() {
-        let mut map = INSTRUMENTS.write();
-        map.insert(instr.security_id.clone(), instr.clone());
+        INSTRUMENTS.insert(instr.security_id.clone(), instr.clone());
     } else {
         log::warn!("!!!!!!!!!! {} {:?}", topic, ev)
     }
@@ -258,8 +244,7 @@ fn start_instrument_daemo() {
     std::thread::spawn(move || {
         let mut last_size = 0;
         loop {
-            let map = INSTRUMENTS.read();
-            let data: Vec<Instrument> = map.values().into_iter().map(|v| v.clone()).collect();
+            let data: Vec<Instrument> = INSTRUMENTS.iter().map(|v| v.value().clone()).collect();
             if data.len() != last_size {
                 match std::fs::OpenOptions::new()
                     .read(true)
@@ -287,7 +272,7 @@ fn start_instrument_daemo() {
                         log::error!("{:?}", err);
                     }
                 }
-                std::thread::sleep(std::time::Duration::from_secs(5));
+                std::thread::sleep(std::time::Duration::from_secs(15));
             }
         }
     });
