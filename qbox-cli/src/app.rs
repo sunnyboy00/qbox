@@ -111,6 +111,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
     let selected_style = Style::default().add_modifier(Modifier::REVERSED);
     let normal_style = Style::default().bg(Color::Blue);
     let header_cells = [
+        "名称",
         "代码",
         "均价",
         "成交量",
@@ -127,7 +128,13 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .height(1)
         .bottom_margin(0);
     let rows = app.level1.iter().map(|item| {
+        let name = if let Some(instr) = qbox_core::get_instrument(&item.security_id) {
+            instr.symbol
+        } else {
+            "".to_string()
+        };
         let cells = vec![
+            Cell::from(name),
             Cell::from(item.security_id.clone()),
             Cell::from(item.average.to_string()),
             Cell::from(item.volume.to_string()),
@@ -152,7 +159,8 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
             Constraint::Percentage(10),
             Constraint::Percentage(10),
             Constraint::Percentage(10),
-            Constraint::Percentage(30),
+            Constraint::Percentage(10),
+            Constraint::Percentage(20),
         ]);
     f.render_stateful_widget(t, rects[0], &mut app.state);
 }
