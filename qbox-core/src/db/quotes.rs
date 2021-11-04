@@ -2,6 +2,7 @@ use crate::bus::{self, topics, Event, Topic};
 use crate::counter::{
     Bar, Instrument, Level1, Level2, QuoteEvent, TickToOffer, TickToTrade, TradeEvent,
 };
+use ahash::RandomState;
 use anyhow::Result;
 use dashmap::DashMap;
 use lazy_static::lazy_static;
@@ -13,17 +14,17 @@ const MAX_TTT_SIZE: usize = 100;
 
 lazy_static! {
     //图表
-    static ref BARS: DashMap<String, Vec<Bar>> = DashMap::new();
+    static ref BARS: DashMap<String, Vec<Bar>,RandomState> = DashMap::with_hasher(RandomState::new());
     //LEVEL1行情
-    static ref LEVEL1S: DashMap<String, Level1> = DashMap::new();
+    static ref LEVEL1S: DashMap<String, Level1,RandomState> = DashMap::with_hasher(RandomState::new());
     //深度行情
-    static ref DEPTHS: DashMap<String, Level2> = DashMap::new();
+    static ref DEPTHS: DashMap<String, Level2,RandomState> = DashMap::with_hasher(RandomState::new());
     //逐笔委托
-    static ref TTOS: DashMap<String, Vec<TickToOffer>> = DashMap::new();
+    static ref TTOS: DashMap<String, Vec<TickToOffer>,RandomState> = DashMap::with_hasher(RandomState::new());
     //逐笔成交
-    static ref TTTS: DashMap<String, Vec<TickToTrade>> = DashMap::new();
+    static ref TTTS: DashMap<String, Vec<TickToTrade>,RandomState> = DashMap::with_hasher(RandomState::new());
     //证券列表
-    static ref INSTRUMENTS: DashMap<String, Instrument> = DashMap::new();
+    static ref INSTRUMENTS: DashMap<String, Instrument,RandomState> = DashMap::with_hasher(RandomState::new());
 }
 
 pub fn get_bar(security_id: &String) -> Option<Vec<Bar>> {
@@ -64,7 +65,7 @@ pub fn get_all_level1() -> Option<Vec<Level1>> {
     let mut data: Vec<Level1> = LEVEL1S.iter().map(|item| item.value().clone()).collect();
     if data.len() > 0 {
         log::trace!("get_all_level1 {:?}", data);
-        data.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap());
+        data.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
         Some(data)
     } else {
         None
@@ -78,7 +79,7 @@ pub fn find_level1_with_prefix(prefix: &str) -> Option<Vec<Level1>> {
         .map(|item| item.value().clone())
         .collect();
     if data.len() > 0 {
-        data.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap());
+        data.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
         Some(data)
     } else {
         None
@@ -92,7 +93,7 @@ pub fn find_level1_with_prefixs(prefixs: &[&str]) -> Option<Vec<Level1>> {
         .collect();
     if data.len() > 0 {
         let mut data = data.concat();
-        data.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap());
+        data.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
         Some(data)
     } else {
         None
@@ -165,14 +166,14 @@ fn process(topic: Topic, ev: Arc<Event>) {
         match quote {
             QuoteEvent::Level1(level1) => {
                 {
-                    // let mut map = LEVEL1S.write();
-                    if let Some(old) = LEVEL1S.get(&level1.security_id) {
-                        let mut l1 = old.value().clone();
-                        l1.score += old.score;
-                        LEVEL1S.insert(l1.security_id.clone(), l1);
-                    } else {
-                        LEVEL1S.insert(level1.security_id.clone(), level1.clone());
-                    }
+                    LEVEL1S.insert(level1.security_id.clone(), level1.clone());
+                    // if let Some(old) = LEVEL1S.get(&level1.security_id) {
+                    //     let mut l1 = level1.clone();
+                    //     l1.score += old.value().score;
+                    //     LEVEL1S.insert(l1.security_id.clone(), l1);
+                    // } else {
+                    //     LEVEL1S.insert(level1.security_id.clone(), level1.clone());
+                    // }
                 }
                 let bar = Bar {
                     security_id: level1.security_id.clone(),

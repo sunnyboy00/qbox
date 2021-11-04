@@ -1,5 +1,6 @@
 use crate::bus::{self, topics, Event, Topic};
 use crate::counter::{Order, TradeEvent, Transaction};
+use ahash::RandomState;
 use anyhow::Result;
 use dashmap::DashMap;
 use lazy_static::lazy_static;
@@ -8,7 +9,7 @@ use std::sync::Arc;
 
 lazy_static! {
     //订单
-    static ref ORDERS: DashMap<String, Vec<Order>> = DashMap::new();
+    static ref ORDERS: DashMap<String, Vec<Order>,RandomState> = DashMap::with_hasher(RandomState::new());
 
     //成交记录
     static ref TRANSACTIONS: DashMap<String, BTreeMap<String,Vec<Transaction>>> = DashMap::new();
