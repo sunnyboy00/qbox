@@ -167,13 +167,33 @@ fn process(topic: Topic, ev: Arc<Event>) {
             QuoteEvent::Level1(level1) => {
                 {
                     LEVEL1S.insert(level1.security_id.clone(), level1.clone());
-                    // if let Some(old) = LEVEL1S.get(&level1.security_id) {
-                    //     let mut l1 = level1.clone();
-                    //     l1.score += old.value().score;
-                    //     LEVEL1S.insert(l1.security_id.clone(), l1);
-                    // } else {
-                    //     LEVEL1S.insert(level1.security_id.clone(), level1.clone());
-                    // }
+                    if let Some(mut old) = LEVEL1S.get_mut(&level1.security_id) {
+                        old.close = if level1.close == f64::NAN {
+                            level1.last
+                        } else {
+                            level1.close
+                        };
+                        old.high = level1.high;
+                        old.last = level1.last;
+                        old.last_quantity = level1.last_quantity;
+                        old.low = level1.low;
+                        old.open = level1.open;
+                        old.score += 1.0;
+                        old.time = level1.time;
+                        old.trading_date = level1.trading_date.clone();
+                        old.turnover = level1.turnover;
+                        old.volume = level1.volume;
+                        old.action_date = level1.action_date.clone();
+                        old.asks = level1.asks.clone();
+                        old.average = level1.average;
+                        old.bids = level1.bids.clone();
+
+                        // let mut l1 = level1.clone();
+                        // l1.score += old.value().score;
+                        // LEVEL1S.insert(l1.security_id.clone(), l1);
+                    } else {
+                        LEVEL1S.insert(level1.security_id.clone(), level1.clone());
+                    }
                 }
                 let bar = Bar {
                     security_id: level1.security_id.clone(),

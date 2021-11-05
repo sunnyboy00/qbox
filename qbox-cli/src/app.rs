@@ -132,7 +132,7 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         let name = if let Some(instr) = qbox_core::get_instrument(&item.security_id) {
             instr.symbol
         } else {
-            "".to_string()
+            item.security_id.clone()
         };
         let cells = vec![
             Cell::from(name),
