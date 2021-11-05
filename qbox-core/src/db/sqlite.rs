@@ -19,34 +19,35 @@ fn create_table(db: &Connection) -> Result<()> {
         CREATE TABLE IF NOT EXISTS qbox (
             key TEXT PRIMARY KEY,
             value TEXT NOT NULL,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL,
+            created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
         );
 
         CREATE TABLE IF NOT EXISTS units (
             id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             passwd TEXT NOT NULL,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL,
+            created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS daemos (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            pid INTEGER,
             kind TEXT NOT NULL, 
             name TEXT NOT NULL,
             uri TEXT NOT NULL,
             state TEXT NOT NULL,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL,
+            created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS brokers (
             name TEXT NOT NULL PRIMARY KEY, 
             items TEXT NOT NULL,
             remark TEXT NOT NULL,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL,
+            created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
         
         CREATE TABLE IF NOT EXISTS unit_instruments (
@@ -54,8 +55,8 @@ fn create_table(db: &Connection) -> Result<()> {
             group TEXT PRIMARY KEY, 
             security_id TEXT PRIMARY KEY,
             quota REAL,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL,
+            created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS instruments (
@@ -68,8 +69,8 @@ fn create_table(db: &Connection) -> Result<()> {
             multiplier INTEGER NOT NULL DEFAULT 1,
             state TEXT NOT NULL,
             items TEXT,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL,
+            created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS quote_level1 (
@@ -98,8 +99,8 @@ fn create_table(db: &Connection) -> Result<()> {
             time INTEGER NOT NULL,
             asks TEXT NOT NULL,
             bids TEXT NOT NULL,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL
+            created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
         
         CREATE TABLE IF NOT EXISTS orders (
@@ -122,10 +123,9 @@ fn create_table(db: &Connection) -> Result<()> {
             remark TEXT,
             owner TEXT INDEX,
             strategy TEXT INDEX,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL,
-            state TEXT NOT NULL DEFAULT 'Created'
-            
+            state TEXT NOT NULL DEFAULT 'Created',
+            created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS transactions (
@@ -140,8 +140,8 @@ fn create_table(db: &Connection) -> Result<()> {
             quantity REAL,
             ask_order_id TEXT,
             bid_order_id TEXT,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL
+            created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS positions (
@@ -162,8 +162,8 @@ fn create_table(db: &Connection) -> Result<()> {
             realized_pnl REAL,
             unrealized_pnl REAL,
             position_pnl REAL,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL
+            created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS accounts (
@@ -172,8 +172,8 @@ fn create_table(db: &Connection) -> Result<()> {
             account TEXT NOT NULL UNIQUE INDEX,
             amount REAL,
             associate INTEGER,
-            created_at INTEGER NOT NULL,
-            updated_at INTEGER NOT NULL
+            created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
         CREATE TABLE IF NOT EXISTS ledgers (
@@ -183,7 +183,7 @@ fn create_table(db: &Connection) -> Result<()> {
             opcode TEXT NOT NULL,
             amount REAL,
             use TEXT NOT NULL,
-            created_at INTEGER NOT NULL,
+            created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
         );
 
         COMMIT;
