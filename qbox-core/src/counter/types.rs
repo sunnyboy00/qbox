@@ -289,18 +289,20 @@ impl Into<String> for TradeKind {
 //Transaction 账户方成交明细
 #[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Transaction {
-    pub id: String,
+    pub id: u64,
+    pub order_id: u64,
+    pub out_id: String,
     pub exchange: Exchange,
     pub security_id: String, //证券代码
     pub time: i64,
-    pub account: String, //交易主体的账户，USDT
-    pub side: Side,      //成交方向
+    // pub account: String, //交易主体的账户，USDT
+    pub side: Side, //成交方向
     //pub order_side: Side,      //订单方向，buy or sell
-    pub into_side: Side,              //成交方向，taker/maker（主动成交/被动成交）
-    pub offset: Side,                 //开平方向
-    pub price: f64,                   //成交价格
-    pub quantity: f64,                //成交数量
-    pub fee: f64,                     //手续费
+    pub into_side: Side, //成交方向，taker/maker（主动成交/被动成交）
+    // pub offset: Side,                 //开平方向
+    pub price: f64,    //成交价格
+    pub quantity: f64, //成交数量
+    // pub fee: f64,                     //手续费
     pub ask_order_id: Option<String>, //Ask订单号
     pub bid_order_id: Option<String>, //Bid订单号
 }
@@ -532,7 +534,7 @@ impl Default for OrderLife {
 pub enum Order {
     //限价单
     Limit {
-        id: String,
+        id: u64,
         security_id: String, //证券代码
         exchange: Exchange,
         time: i64,
@@ -547,7 +549,7 @@ pub enum Order {
     },
     //市价单
     Market {
-        id: String,
+        id: u64,
         security_id: String, //证券代码
         exchange: Exchange,
         time: i64,
@@ -561,7 +563,7 @@ pub enum Order {
     },
     //止盈止损单
     TakeStop {
-        id: String,
+        id: u64,
         security_id: String, //证券代码
         exchange: Exchange,
         time: i64,
@@ -576,7 +578,7 @@ pub enum Order {
     },
     //跟踪委托单
     Tracking {
-        id: String,
+        id: u64,
         security_id: String, //证券代码
         exchange: Exchange,
         time: i64,
@@ -592,7 +594,7 @@ pub enum Order {
     },
     //冰山委托
     Iceberg {
-        id: String,
+        id: u64,
         security_id: String, //证券代码
         exchange: Exchange,
         time: i64,
@@ -609,7 +611,7 @@ pub enum Order {
     },
     //时间加权
     TimeWeights {
-        id: String,
+        id: u64,
         security_id: String, //证券代码
         exchange: Exchange,
         time: i64,

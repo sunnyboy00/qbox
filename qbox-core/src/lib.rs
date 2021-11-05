@@ -14,6 +14,9 @@ pub use db::*;
 
 use anyhow::Result;
 
+const DATA_PATH: &str = "data";
+const LOG_PATH: &str = "logs";
+
 pub fn startup() -> Result<()> {
     //启动总线
     log::debug!("qbox bus startup");
@@ -32,4 +35,28 @@ pub fn get_exec_path() -> String {
         .to_str()
         .unwrap()
         .to_string()
+}
+
+pub fn get_data_path() -> String {
+    let data_path = std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join(DATA_PATH);
+    if !data_path.exists() {
+        std::fs::create_dir_all(&data_path).ok();
+    }
+    data_path.to_str().unwrap().to_string()
+}
+
+pub fn get_log_path() -> String {
+    let log_path = std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join(LOG_PATH);
+    if !log_path.exists() {
+        std::fs::create_dir_all(&log_path).ok();
+    }
+    log_path.to_str().unwrap().to_string()
 }
