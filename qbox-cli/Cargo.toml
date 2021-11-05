@@ -6,24 +6,24 @@ version = "0.1.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-tui = {git  = "https://github.com/fdehau/tui-rs", branch="master"}
 anyhow = "1.0.44"
 argh = "0.1"
 chrono = "0.4.19"
+crossbeam = "0.8.1"
 crossterm = "0.22"
 env_logger = "0.9.0"
-log = "0.4.14"
-qbox-core = {path = "../qbox-core"}
-qbox-counter = {path = "../qbox-counter"}
-rand = "0.8"
-structopt = "0.3.23"
-thiserror = "1.0.30"
-url = "2.2.2"
-crossbeam = "0.8.1"
-ron = "0.7.0"
-structopt-toml = "0.5.0"
-serde = {version = "1.0.113", features = ["derive"]}
-toml           = "0.5.6"
 flexi_logger = "0.19.6"
+log = "0.4.14"
+qbox-broker = {path = "../qbox-broker"}
+qbox-core = {path = "../qbox-core"}
+rand = "0.8"
+ron = "0.7.0"
+serde = {version = "1.0.113", features = ["derive"]}
+structopt = "0.3.23"
+structopt-toml = "0.5.0"
+thiserror = "1.0.30"
+toml = "0.5.6"
+tui = {git = "https://github.com/fdehau/tui-rs", branch = "master"}
+url = "2.2.2"
 
 [dev-dependencies]

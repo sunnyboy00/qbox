@@ -1,4 +1,4 @@
-use crate::counter::Bar;
+use crate::broker::Bar;
 use ta::indicators::Maximum as max;
 use ta::Next;
 

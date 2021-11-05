@@ -10,7 +10,7 @@ use druid::text::{Attribute, RichText, TextStorage};
 use druid::{
     Color, Data, Env, FontFamily, FontStyle, FontWeight, Lens, Point, Rect, Size, WindowId,
 };
-use qbox_core::counter::Bar;
+use qbox_core::broker::Bar;
 use std::path::Path;
 use std::sync::Arc;
 use view::indicator::MyRadio;

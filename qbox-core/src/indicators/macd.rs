@@ -1,4 +1,4 @@
-use crate::counter::Bar;
+use crate::broker::Bar;
 use ta::indicators::MovingAverageConvergenceDivergence as macd;
 use ta::Next;
 

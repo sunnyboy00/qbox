@@ -1,14 +1,14 @@
 [workspace]
 default-members = [
   "qbox-core",
-  "qbox-counter",
+  "qbox-broker",
   "qbox-gui",
   "qbox-cli",
   "qbox-strategy",
 ]
 members = [
   "qbox-core",
-  "qbox-counter",
+  "qbox-broker",
   "qbox-gui",
   "qbox-cli",
   "qbox-strategy",

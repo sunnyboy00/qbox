@@ -1,4 +1,4 @@
-use crate::counter::Bar;
+use crate::broker::Bar;
 use ta::indicators::Minimum as min;
 use ta::Next;
 

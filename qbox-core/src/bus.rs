@@ -4,7 +4,7 @@ pub mod tcp;
 pub mod topics;
 pub mod unix_socket;
 
-use crate::counter::*;
+use crate::broker::*;
 use anyhow::Result;
 use lazy_static::lazy_static;
 use local::LocalBus;

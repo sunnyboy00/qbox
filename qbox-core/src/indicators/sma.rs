@@ -1,4 +1,4 @@
-use crate::counter::Bar;
+use crate::broker::Bar;
 use ta::indicators::SimpleMovingAverage as ma;
 use ta::Next;
 

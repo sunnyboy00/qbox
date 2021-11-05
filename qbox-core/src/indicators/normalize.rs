@@ -1,4 +1,4 @@
-use crate::counter::Bar;
+use crate::broker::Bar;
 
 pub trait Normalize {
     type Output;

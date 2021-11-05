@@ -1,4 +1,4 @@
-use crate::counter::{Factory, Quotes};
+use crate::broker::{Factory, Trades};
 use anyhow::Result;
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
@@ -8,26 +8,26 @@ use std::sync::Arc;
 use url::Url;
 
 lazy_static! {
-    static ref QUOTERS: Mutex<HashMap<Url, Quoter>> = Mutex::new(HashMap::new());
+    static ref QUOTERS: Mutex<HashMap<Url, Trader>> = Mutex::new(HashMap::new());
 }
 
 #[derive(Clone)]
-pub struct Quoter {
+pub struct Trader {
     pub uri: Url,
-    inner: Arc<dyn Quotes>,
+    inner: Arc<dyn Trades>,
 }
 
-impl Deref for Quoter {
-    type Target = Arc<dyn Quotes>;
+impl Deref for Trader {
+    type Target = Arc<dyn Trades>;
     fn deref(&self) -> &Self::Target {
         &self.inner
     }
 }
 
-pub fn spawn(uri: Url) -> Result<Quoter> {
-    log::debug!("spawn quotes {}", uri);
+pub fn spawn(uri: Url) -> Result<Trader> {
+    log::debug!("spwan trades {}", uri);
     let inner = Factory::create(uri.clone())?;
-    let exec = Quoter {
+    let exec = Trader {
         uri: uri.clone(),
         inner,
     };
@@ -35,20 +35,20 @@ pub fn spawn(uri: Url) -> Result<Quoter> {
     Ok(exec)
 }
 
-pub fn get(uri: &Url) -> Option<Quoter> {
+pub fn get(uri: &Url) -> Option<Trader> {
     if let Some(exec) = QUOTERS.lock().get(uri) {
         return Some(exec.clone());
     }
     None
 }
 
-pub fn remove(uri: &Url) -> Option<Quoter> {
+pub fn remove(uri: &Url) -> Option<Trader> {
     if let Some(exec) = QUOTERS.lock().remove(uri) {
         return Some(exec);
     }
     None
 }
 
-pub fn list() -> Vec<Quoter> {
+pub fn list() -> Vec<Trader> {
     QUOTERS.lock().values().map(|exec| exec.clone()).collect()
 }

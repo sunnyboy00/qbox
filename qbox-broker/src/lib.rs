@@ -11,17 +11,17 @@ pub fn load_counter() -> Result<()> {
     #[cfg(any(target_os = "windows", target_os = "linux"))]
     {
         log::debug!("加载CTP驱动");
-        qbox_core::counter::register_driver(Counter::CTP.into(), ctp::CTPDriver::default())?;
+        qbox_core::broker::register_driver(Counter::CTP.into(), ctp::CTPDriver::default())?;
     }
     #[cfg(any(target_os = "windows", target_os = "linux", target_os = "macos"))]
     {
         log::debug!("加载XTP驱动");
-        qbox_core::counter::register_driver(Counter::XTP.into(), xtp::XTPDriver::default())?;
+        qbox_core::broker::register_driver(Counter::XTP.into(), xtp::XTPDriver::default())?;
     }
     #[cfg(any(target_os = "windows", target_os = "linux"))]
     {
         log::debug!("加载FEMAS驱动");
-        qbox_core::counter::register_driver(Counter::FEMAS.into(), femas::FemasDriver::default())?;
+        qbox_core::broker::register_driver(Counter::FEMAS.into(), femas::FemasDriver::default())?;
     }
     Ok(())
 }

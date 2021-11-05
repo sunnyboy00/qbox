@@ -6,7 +6,7 @@ mod util;
 use anyhow::Result;
 use flexi_logger::{FileSpec, Logger};
 use opt::Opt;
-use qbox_core::counter::*;
+use qbox_core::broker::*;
 use qbox_core::{topics, Event};
 use std::io::Write;
 use std::str::FromStr;
@@ -29,7 +29,7 @@ fn main() -> Result<()> {
         .start()?;
 
     qbox_core::startup()?;
-    qbox_counter::load_counter()?;
+    qbox_broker::load_counter()?;
 
     let quoter = quoter::spawn(Url::parse(opt.quote_dsn.as_str())?)?;
     let trader = trader::spawn(Url::parse(opt.trade_dsn.as_str())?)?;

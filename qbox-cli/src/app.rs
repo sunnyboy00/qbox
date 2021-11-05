@@ -4,7 +4,7 @@ use crossterm::{
     execute,
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
 };
-use qbox_core::counter::Level1;
+use qbox_core::broker::Level1;
 use std::{
     io,
     time::{Duration, Instant},
