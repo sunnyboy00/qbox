@@ -48,8 +48,8 @@ fn main() -> Result<()> {
             }
         })?;
     }
-    loop {
-        std::thread::sleep(std::time::Duration::from_secs(5));
-    }
-    // app::run_app()
+    // loop {
+    //     std::thread::sleep(std::time::Duration::from_secs(5));
+    // }
+    app::run_app()
 }
