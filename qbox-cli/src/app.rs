@@ -66,16 +66,15 @@ pub(crate) fn run_app() -> Result<()> {
     let mut terminal = Terminal::new(backend)?;
     let mut app = App::new();
     let mut last_tick = Instant::now();
-    let timeout = Duration::from_millis(40);
     // Input
     loop {
         if let Some(levels) = qbox_core::get_all_level1() {
             app.level1 = levels;
         }
-        // let tick_rate = Duration::from_millis(200);
-        // let timeout = tick_rate
-        //     .checked_sub(last_tick.elapsed())
-        //     .unwrap_or_else(|| Duration::from_secs(0));
+        let tick_rate = Duration::from_millis(200);
+        let timeout = tick_rate
+            .checked_sub(last_tick.elapsed())
+            .unwrap_or_else(|| Duration::from_secs(0));
         terminal.draw(|f| ui(f, &mut app))?;
         if crossterm::event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
@@ -87,9 +86,9 @@ pub(crate) fn run_app() -> Result<()> {
                 }
             }
         }
-        // if last_tick.elapsed() >= tick_rate {
-        //     last_tick = Instant::now();
-        // }
+        if last_tick.elapsed() >= tick_rate {
+            last_tick = Instant::now();
+        }
     }
 
     disable_raw_mode()?;
