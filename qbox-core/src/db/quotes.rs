@@ -315,8 +315,8 @@ fn symbol_worker() {
                             log::error!("{:?}", err);
                         }
                     }
-                    std::thread::sleep(std::time::Duration::from_secs(15));
                 }
+                std::thread::sleep(std::time::Duration::from_secs(15));
             }
         })
         .ok();
