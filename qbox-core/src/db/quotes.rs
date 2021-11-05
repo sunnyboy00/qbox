@@ -155,8 +155,8 @@ pub(crate) fn init() -> Result<()> {
         }
     }
     let (tx, rx) = channel::unbounded();
-    start_instrument_daemo();
-    start_data_worker(rx);
+    symbol_worker();
+    quote_worker(rx);
     let tx1 = tx.clone();
     let tx2 = tx.clone();
     let _ = bus::subscribe(topics::QUOTES_EVENT, move |_, ev| {
@@ -165,11 +165,10 @@ pub(crate) fn init() -> Result<()> {
     let _ = bus::subscribe(topics::QUERY_EVENT, move |_, ev| {
         tx2.send(ev).ok();
     })?;
-
     Ok(())
 }
 
-fn start_data_worker(rx: Receiver<Arc<Event>>) {
+fn quote_worker(rx: Receiver<Arc<Event>>) {
     std::thread::Builder::new()
         .name("qbox-quote-worker".into())
         .spawn(move || loop {
@@ -280,42 +279,45 @@ fn start_data_worker(rx: Receiver<Arc<Event>>) {
         })
         .ok();
 }
-fn start_instrument_daemo() {
+fn symbol_worker() {
     let work_dir = crate::get_exec_path();
     let path = std::path::Path::new(&work_dir).join("data");
-    std::thread::spawn(move || {
-        let mut last_size = 0;
-        loop {
-            let data: Vec<Instrument> = INSTRUMENTS.iter().map(|v| v.value().clone()).collect();
-            if data.len() != last_size {
-                match std::fs::OpenOptions::new()
-                    .read(true)
-                    .write(true)
-                    .create(true)
-                    .truncate(true)
-                    .open(path.join(".symbols.txt"))
-                {
-                    Ok(mut file) => {
-                        if let Err(err) = ron::ser::to_writer_pretty(
-                            &mut file,
-                            &data,
-                            ron::ser::PrettyConfig::default(),
-                        ) {
+    std::thread::Builder::new()
+        .name("symbol_worker".into())
+        .spawn(move || {
+            let mut last_size = 0;
+            loop {
+                let data: Vec<Instrument> = INSTRUMENTS.iter().map(|v| v.value().clone()).collect();
+                if data.len() != last_size {
+                    match std::fs::OpenOptions::new()
+                        .read(true)
+                        .write(true)
+                        .create(true)
+                        .truncate(true)
+                        .open(path.join(".symbols.txt"))
+                    {
+                        Ok(mut file) => {
+                            if let Err(err) = ron::ser::to_writer_pretty(
+                                &mut file,
+                                &data,
+                                ron::ser::PrettyConfig::default(),
+                            ) {
+                                log::error!("{:?}", err);
+                            } else if let Err(err) =
+                                std::fs::rename(path.join(".symbols.txt"), path.join("symbols.txt"))
+                            {
+                                log::error!("{:?}", err);
+                            } else {
+                                last_size = data.len();
+                            }
+                        }
+                        Err(err) => {
                             log::error!("{:?}", err);
-                        } else if let Err(err) =
-                            std::fs::rename(path.join(".symbols.txt"), path.join("symbols.txt"))
-                        {
-                            log::error!("{:?}", err);
-                        } else {
-                            last_size = data.len();
                         }
                     }
-                    Err(err) => {
-                        log::error!("{:?}", err);
-                    }
+                    std::thread::sleep(std::time::Duration::from_secs(15));
                 }
-                std::thread::sleep(std::time::Duration::from_secs(15));
             }
-        }
-    });
+        })
+        .ok();
 }
