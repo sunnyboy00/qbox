@@ -4,6 +4,7 @@ use crate::counter::{
 };
 use ahash::RandomState;
 use anyhow::Result;
+use crossbeam::channel::{self, Receiver, Sender};
 use dashmap::DashMap;
 use lazy_static::lazy_static;
 use std::sync::Arc;
@@ -153,112 +154,132 @@ pub(crate) fn init() -> Result<()> {
             });
         }
     }
-
-    let _ = bus::subscribe(topics::QUOTES_EVENT, process)?;
-    let _ = bus::subscribe(topics::QUERY_EVENT, process)?;
+    let (tx, rx) = channel::unbounded();
     start_instrument_daemo();
+    start_data_worker(rx);
+    let tx1 = tx.clone();
+    let tx2 = tx.clone();
+    let _ = bus::subscribe(topics::QUOTES_EVENT, move |_, ev| {
+        tx1.send(ev).ok();
+    })?;
+    let _ = bus::subscribe(topics::QUERY_EVENT, move |_, ev| {
+        tx2.send(ev).ok();
+    })?;
+
     Ok(())
 }
 
-fn process(topic: Topic, ev: Arc<Event>) {
-    log::trace!("process {:?}", ev);
-    if let Event::Quote(quote) = ev.as_ref() {
-        match quote {
-            QuoteEvent::Level1(level1) => {
-                {
-                    LEVEL1S.insert(level1.security_id.clone(), level1.clone());
-                    if let Some(mut old) = LEVEL1S.get_mut(&level1.security_id) {
-                        old.close = if level1.close == f64::NAN {
-                            level1.last
-                        } else {
-                            level1.close
-                        };
-                        old.high = level1.high;
-                        old.last = level1.last;
-                        old.last_quantity = level1.last_quantity;
-                        old.low = level1.low;
-                        old.open = level1.open;
-                        old.score += 1.0;
-                        old.time = level1.time;
-                        old.trading_date = level1.trading_date.clone();
-                        old.turnover = level1.turnover;
-                        old.volume = level1.volume;
-                        old.action_date = level1.action_date.clone();
-                        old.asks = level1.asks.clone();
-                        old.average = level1.average;
-                        old.bids = level1.bids.clone();
+fn start_data_worker(rx: Receiver<Arc<Event>>) {
+    std::thread::Builder::new()
+        .name("qbox-quote-worker".into())
+        .spawn(move || loop {
+            match rx.recv() {
+                Ok(ev) => {
+                    log::trace!("process {:?}", ev);
+                    match ev.as_ref() {
+                        Event::Quote(quote) => match quote {
+                            QuoteEvent::Level1(level1) => {
+                                {
+                                    LEVEL1S.insert(level1.security_id.clone(), level1.clone());
+                                    if let Some(mut old) = LEVEL1S.get_mut(&level1.security_id) {
+                                        old.close = if level1.close == f64::NAN {
+                                            level1.last
+                                        } else {
+                                            level1.close
+                                        };
+                                        old.high = level1.high;
+                                        old.last = level1.last;
+                                        old.last_quantity = level1.last_quantity;
+                                        old.low = level1.low;
+                                        old.open = level1.open;
+                                        old.score += 1.0;
+                                        old.time = level1.time;
+                                        old.trading_date = level1.trading_date.clone();
+                                        old.turnover = level1.turnover;
+                                        old.volume = level1.volume;
+                                        old.action_date = level1.action_date.clone();
+                                        old.asks = level1.asks.clone();
+                                        old.average = level1.average;
+                                        old.bids = level1.bids.clone();
 
-                        // let mut l1 = level1.clone();
-                        // l1.score += old.value().score;
-                        // LEVEL1S.insert(l1.security_id.clone(), l1);
-                    } else {
-                        LEVEL1S.insert(level1.security_id.clone(), level1.clone());
+                                        // let mut l1 = level1.clone();
+                                        // l1.score += old.value().score;
+                                        // LEVEL1S.insert(l1.security_id.clone(), l1);
+                                    } else {
+                                        LEVEL1S.insert(level1.security_id.clone(), level1.clone());
+                                    }
+                                }
+                                let bar = Bar {
+                                    security_id: level1.security_id.clone(),
+                                    exchange: level1.exchange,
+                                    time: level1.time,
+                                    open: level1.open,
+                                    high: level1.high,
+                                    low: level1.low,
+                                    close: if level1.close == f64::NAN {
+                                        level1.last
+                                    } else {
+                                        level1.close
+                                    },
+                                    volume: level1.last_quantity,
+                                    turnover: Some(level1.turnover),
+                                };
+                                bus::quotes_event(QuoteEvent::Bar(bar)).ok();
+                            }
+                            QuoteEvent::Bar(bar) => {
+                                if let Some(mut bars) = BARS.get_mut(&bar.security_id) {
+                                    bars.value_mut().push(bar.clone());
+                                    if bars.len() > MAX_BAR_SIZE {
+                                        bars.remove(0);
+                                    }
+                                } else {
+                                    let mut bars = Vec::with_capacity(MAX_BAR_SIZE);
+                                    bars.push(bar.clone());
+                                    BARS.insert(bar.security_id.clone(), bars);
+                                }
+                            }
+                            QuoteEvent::Level2(level2) => {
+                                DEPTHS.insert(level2.security_id.clone(), level2.clone());
+                            }
+                            QuoteEvent::TickToOffer(tto) => {
+                                if let Some(mut ttos) = TTOS.get_mut(&tto.security_id) {
+                                    ttos.value_mut().push(tto.clone());
+                                    if ttos.len() > MAX_TTO_SIZE {
+                                        ttos.remove(0);
+                                    }
+                                } else {
+                                    let mut ttos = Vec::with_capacity(MAX_TTO_SIZE);
+                                    ttos.push(tto.clone());
+                                    TTOS.insert(tto.security_id.clone(), ttos);
+                                }
+                            }
+                            QuoteEvent::TickToTrade(ttt) => {
+                                if let Some(mut ttts) = TTTS.get_mut(&ttt.security_id) {
+                                    ttts.value_mut().push(ttt.clone());
+                                    if ttts.len() > MAX_TTT_SIZE {
+                                        ttts.remove(0);
+                                    }
+                                } else {
+                                    let mut ttts = Vec::with_capacity(MAX_TTT_SIZE);
+                                    ttts.push(ttt.clone());
+                                    TTTS.insert(ttt.security_id.clone(), ttts);
+                                }
+                            }
+                        },
+
+                        Event::Trade(TradeEvent::InstrumentsResponse(instr)) => {
+                            INSTRUMENTS.insert(instr.security_id.clone(), instr.clone());
+                        }
+                        _ => {}
                     }
                 }
-                let bar = Bar {
-                    security_id: level1.security_id.clone(),
-                    exchange: level1.exchange,
-                    time: level1.time,
-                    open: level1.open,
-                    high: level1.high,
-                    low: level1.low,
-                    close: if level1.close == f64::NAN {
-                        level1.last
-                    } else {
-                        level1.close
-                    },
-                    volume: level1.last_quantity,
-                    turnover: Some(level1.turnover),
-                };
-                bus::quotes_event(QuoteEvent::Bar(bar)).ok();
-            }
-            QuoteEvent::Bar(bar) => {
-                if let Some(mut bars) = BARS.get_mut(&bar.security_id) {
-                    bars.value_mut().push(bar.clone());
-                    if bars.len() > MAX_BAR_SIZE {
-                        bars.remove(0);
-                    }
-                } else {
-                    let mut bars = Vec::with_capacity(MAX_BAR_SIZE);
-                    bars.push(bar.clone());
-                    BARS.insert(bar.security_id.clone(), bars);
+                Err(err) => {
+                    log::error!("!!!!!!!!!! {:?}", err);
                 }
             }
-            QuoteEvent::Level2(level2) => {
-                DEPTHS.insert(level2.security_id.clone(), level2.clone());
-            }
-            QuoteEvent::TickToOffer(tto) => {
-                if let Some(mut ttos) = TTOS.get_mut(&tto.security_id) {
-                    ttos.value_mut().push(tto.clone());
-                    if ttos.len() > MAX_TTO_SIZE {
-                        ttos.remove(0);
-                    }
-                } else {
-                    let mut ttos = Vec::with_capacity(MAX_TTO_SIZE);
-                    ttos.push(tto.clone());
-                    TTOS.insert(tto.security_id.clone(), ttos);
-                }
-            }
-            QuoteEvent::TickToTrade(ttt) => {
-                if let Some(mut ttts) = TTTS.get_mut(&ttt.security_id) {
-                    ttts.value_mut().push(ttt.clone());
-                    if ttts.len() > MAX_TTT_SIZE {
-                        ttts.remove(0);
-                    }
-                } else {
-                    let mut ttts = Vec::with_capacity(MAX_TTT_SIZE);
-                    ttts.push(ttt.clone());
-                    TTTS.insert(ttt.security_id.clone(), ttts);
-                }
-            }
-        }
-    } else if let Event::Trade(TradeEvent::InstrumentsResponse(instr)) = ev.as_ref() {
-        INSTRUMENTS.insert(instr.security_id.clone(), instr.clone());
-    } else {
-        log::warn!("!!!!!!!!!! {} {:?}", topic, ev)
-    }
+        })
+        .ok();
 }
-
 fn start_instrument_daemo() {
     let work_dir = crate::get_exec_path();
     let path = std::path::Path::new(&work_dir).join("data");
