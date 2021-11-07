@@ -1,19 +1,20 @@
 use crate::broker::{Factory, Trades};
+use ahash::RandomState;
 use anyhow::Result;
+use dashmap::DashMap;
 use lazy_static::lazy_static;
-use parking_lot::Mutex;
-use std::collections::HashMap;
 use std::ops::Deref;
 use std::sync::Arc;
 use url::Url;
 
 lazy_static! {
-    static ref QUOTERS: Mutex<HashMap<Url, Trader>> = Mutex::new(HashMap::new());
+    static ref TRADERS: DashMap<Url, Trader, RandomState> =
+        DashMap::with_hasher(RandomState::new());
 }
 
 #[derive(Clone)]
 pub struct Trader {
-    pub uri: Url,
+    name: String,
     inner: Arc<dyn Trades>,
 }
 
@@ -27,28 +28,27 @@ impl Deref for Trader {
 pub fn spawn(uri: Url) -> Result<Trader> {
     log::debug!("spwan trades {}", uri);
     let inner = Factory::create(uri.clone())?;
-    let exec = Trader {
-        uri: uri.clone(),
-        inner,
-    };
-    QUOTERS.lock().insert(uri, exec.clone());
+    let name = uri.path().into();
+
+    let exec = Trader { name, inner };
+    TRADERS.insert(uri, exec.clone());
     Ok(exec)
 }
 
 pub fn get(uri: &Url) -> Option<Trader> {
-    if let Some(exec) = QUOTERS.lock().get(uri) {
-        return Some(exec.clone());
+    if let Some(exec) = TRADERS.get(uri) {
+        return Some(exec.value().clone());
     }
     None
 }
 
 pub fn remove(uri: &Url) -> Option<Trader> {
-    if let Some(exec) = QUOTERS.lock().remove(uri) {
-        return Some(exec);
+    if let Some((_, trader)) = TRADERS.remove(uri) {
+        return Some(trader);
     }
     None
 }
 
 pub fn list() -> Vec<Trader> {
-    QUOTERS.lock().values().map(|exec| exec.clone()).collect()
+    TRADERS.values().map(|exec| exec.clone()).collect()
 }

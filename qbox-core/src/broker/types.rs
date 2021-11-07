@@ -1,3 +1,4 @@
+use crate::{Item, Parameter, Value};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::BitOr;
@@ -396,26 +397,6 @@ impl Default for InstState {
     }
 }
 
-pub type Item = String;
-
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
-pub enum Value {
-    F32(f32),
-    F64(f64),
-    String(String),
-    I8(i8),
-    U8(u8),
-    I16(i16),
-    U16(u16),
-    I32(i32),
-    U32(u32),
-    I64(i64),
-    U64(u64),
-    ISize(isize),
-    USize(usize),
-    Char(char),
-    Bytes(Vec<u8>),
-}
 #[doc = "证券"]
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
 pub struct Instrument {
@@ -425,7 +406,7 @@ pub struct Instrument {
     pub kind: TradeKind,
     pub base_currency: String,  //基础货币
     pub quote_currency: String, //计价货币
-    pub items: HashMap<Item, Value>,
+    pub items: Parameter,
     pub multiplier: usize, //乘数
     pub state: InstState,
 }
@@ -440,7 +421,7 @@ impl Instrument {
             base_currency: "".into(),
             quote_currency: "".into(),
             multiplier: 1,
-            items: HashMap::with_capacity(100),
+            items: Parameter::with_capacity(100),
             state: InstState::Unknown,
         }
     }

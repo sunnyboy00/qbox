@@ -1,5 +1,6 @@
 pub mod executor;
 use crate::broker::QuoteEvent;
+use crate::Parameter;
 use anyhow::Result;
 use lazy_static::lazy_static;
 use parking_lot::Mutex;
@@ -51,6 +52,7 @@ pub trait Driver: Send {
 #[doc = "策略接口"]
 pub trait Strategy: Send + Sync {
     fn name(&self) -> &str;
+    fn init(&self, params: Parameter);
     fn start(&self) -> Result<()>;
     fn suspend(&self) -> Result<()>;
     fn resume(&self) -> Result<()>;

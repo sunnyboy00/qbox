@@ -13,6 +13,8 @@ pub use bus::{
 pub use db::*;
 
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 const DATA_PATH: &str = "data";
 const LOG_PATH: &str = "logs";
@@ -60,3 +62,26 @@ pub fn get_log_path() -> String {
     }
     log_path.to_str().unwrap().to_string()
 }
+
+pub type Item = String;
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub enum Value {
+    F32(f32),
+    F64(f64),
+    String(String),
+    I8(i8),
+    U8(u8),
+    I16(i16),
+    U16(u16),
+    I32(i32),
+    U32(u32),
+    I64(i64),
+    U64(u64),
+    ISize(isize),
+    USize(usize),
+    Char(char),
+    Bytes(Vec<u8>),
+}
+
+pub type Parameter = HashMap<Item, Value>;
