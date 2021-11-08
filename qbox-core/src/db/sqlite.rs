@@ -66,7 +66,7 @@ pub fn opendb_read_only() -> Result<Connection> {
 }
 
 pub fn insert_instrument(db: &Connection, instr: &Instrument) -> Result<()> {
-    const SQL: &str = r#"INSERT OR REPLACE INTO instruments (security_id,exchange,symbol,kind,base_currency,quote_currency,multiplier,state,items) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9);"#;
+    const SQL: &str = r#"INSERT OR REPLACE INTO instruments (security_id,exchange,symbol,kind,base_currency,quote_currency,multiplier,state,items,updated_at) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,CURRENT_TIMESTAMP);"#;
     let exchange: &str = instr.exchange.into();
     let kind: &str = instr.kind.into();
     let state = format!("{:?}", instr.state);
@@ -137,8 +137,9 @@ pub fn update_level1(db: &Connection, level1: &Level1) -> Result<()> {
         asks,
         bids,
         volume,
-        turnover
-    ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14);"#;
+        turnover,
+        updated_at
+    ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,CURRENT_TIMESTAMP);"#;
     let exchange: &str = level1.exchange.into();
     let asks = ron::to_string(&level1.asks)?;
     let bids = ron::to_string(&level1.bids)?;
@@ -159,6 +160,7 @@ pub fn update_level1(db: &Connection, level1: &Level1) -> Result<()> {
             bids,
             level1.volume,
             level1.turnover,
+            level1.time,
         ],
     )?;
     Ok(())
