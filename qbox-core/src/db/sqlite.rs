@@ -163,7 +163,7 @@ pub fn update_level1(db: &Connection, level1: &Level1) -> Result<()> {
     let asks = ron::to_string(&level1.asks)?;
     let bids = ron::to_string(&level1.bids)?;
     let items = ron::to_string(&level1.items)?;
-    if let Err(_err) = db.execute(
+    let len = db.execute(
         SQL_UPDATE,
         params![
             level1.time,
@@ -181,7 +181,8 @@ pub fn update_level1(db: &Connection, level1: &Level1) -> Result<()> {
             items,
             level1.security_id,
         ],
-    ) {
+    )?;
+    if len == 0 {
         db.execute(
             SQL_INSERT,
             params![
