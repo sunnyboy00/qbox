@@ -159,7 +159,7 @@ pub fn find_instrument_with_prefixs(prefixs: &[&str]) -> Option<Vec<Instrument>>
 }
 
 pub(crate) fn init() -> Result<()> {
-    let (tx, rx) = channel::unbounded();
+    let (tx, rx) = channel::bounded(8192);
     let tx1 = tx.clone();
     let tx2 = tx.clone();
     quote_worker(rx)?;
@@ -244,6 +244,7 @@ fn quote_worker(rx: Receiver<Arc<Event>>) -> Result<()> {
     sqlite::find_all_instruments(&db)?.iter().for_each(|instr| {
         INSTRUMENTS.insert(instr.security_id.clone(), instr.clone());
     });
+    let _ = db.close();
     std::thread::Builder::new()
         .name("qbox-quote-worker".into())
         .spawn(move || loop {
@@ -253,8 +254,11 @@ fn quote_worker(rx: Receiver<Arc<Event>>) -> Result<()> {
                     match ev.as_ref() {
                         Event::Quote(quote) => match quote {
                             QuoteEvent::Level1(level1) => {
-                                if let Err(err) = sqlite::update_level1(&db, level1) {
-                                    log::error!("sqlite error {:?}", err);
+                                if let Ok(db) = sqlite::opendb() {
+                                    if let Err(err) = sqlite::update_level1(&db, level1) {
+                                        log::error!("sqlite error {:?}", err);
+                                    }
+                                    let _ = db.close();
                                 }
                             }
                             QuoteEvent::Bar(bar) => {}
@@ -263,8 +267,11 @@ fn quote_worker(rx: Receiver<Arc<Event>>) -> Result<()> {
                             QuoteEvent::TickToTrade(ttt) => {}
                         },
                         Event::Trade(TradeEvent::InstrumentsResponse(instr)) => {
-                            if let Err(err) = sqlite::insert_instrument(&db, instr) {
-                                log::error!("sqlite error {:?}", err);
+                            if let Ok(db) = sqlite::opendb() {
+                                if let Err(err) = sqlite::insert_instrument(&db, instr) {
+                                    log::error!("sqlite error {:?}", err);
+                                }
+                                let _ = db.close();
                             }
                         }
                         _ => {}
