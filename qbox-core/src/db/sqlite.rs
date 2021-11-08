@@ -160,7 +160,6 @@ pub fn update_level1(db: &Connection, level1: &Level1) -> Result<()> {
             bids,
             level1.volume,
             level1.turnover,
-            level1.time,
         ],
     )?;
     Ok(())
