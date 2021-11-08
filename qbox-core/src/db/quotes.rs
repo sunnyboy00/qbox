@@ -71,24 +71,13 @@ pub fn get_all_level1() -> Option<Vec<Level1>> {
                 return Some(data);
             }
             Err(err) => {
-                println!("{}", err);
+                log::error!("{}", err);
             }
         },
         Err(err) => {
-            println!("{}", err);
+            log::error!("{}", err);
         }
     }
-    // let db = sqlite::opendb_read_only().unwrap();
-    // //let map = LEVEL1S.read();
-
-    // if let Ok(data) = sqlite::find_all_level1(&db) {
-    //     if data.len() > 0 {
-    //         log::trace!("get_all_level1 {:?}", data);
-    //         //data.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
-    //         return Some(data);
-    //     }
-    // }
-    // let _ = db.close();
     None
     // let data: Vec<Level1> = LEVEL1S.iter().map(|item| item.value().clone()).collect();
     // if data.len() > 0 {
