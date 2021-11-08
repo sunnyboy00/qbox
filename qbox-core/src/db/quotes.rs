@@ -244,7 +244,6 @@ fn quote_worker(rx: Receiver<Arc<Event>>) -> Result<()> {
     sqlite::find_all_instruments(&db)?.iter().for_each(|instr| {
         INSTRUMENTS.insert(instr.security_id.clone(), instr.clone());
     });
-    let _ = db.close();
     std::thread::Builder::new()
         .name("qbox-quote-worker".into())
         .spawn(move || loop {
@@ -254,11 +253,8 @@ fn quote_worker(rx: Receiver<Arc<Event>>) -> Result<()> {
                     match ev.as_ref() {
                         Event::Quote(quote) => match quote {
                             QuoteEvent::Level1(level1) => {
-                                if let Ok(db) = sqlite::opendb() {
-                                    if let Err(err) = sqlite::update_level1(&db, level1) {
-                                        log::error!("sqlite error {:?}", err);
-                                    }
-                                    let _ = db.close();
+                                if let Err(err) = sqlite::update_level1(&db, level1) {
+                                    log::error!("sqlite error {:?}", err);
                                 }
                             }
                             QuoteEvent::Bar(bar) => {}
@@ -267,11 +263,8 @@ fn quote_worker(rx: Receiver<Arc<Event>>) -> Result<()> {
                             QuoteEvent::TickToTrade(ttt) => {}
                         },
                         Event::Trade(TradeEvent::InstrumentsResponse(instr)) => {
-                            if let Ok(db) = sqlite::opendb() {
-                                if let Err(err) = sqlite::insert_instrument(&db, instr) {
-                                    log::error!("sqlite error {:?}", err);
-                                }
-                                let _ = db.close();
+                            if let Err(err) = sqlite::insert_instrument(&db, instr) {
+                                log::error!("sqlite error {:?}", err);
                             }
                         }
                         _ => {}
