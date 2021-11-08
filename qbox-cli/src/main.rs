@@ -52,4 +52,10 @@ fn main() -> Result<()> {
     //     std::thread::sleep(std::time::Duration::from_secs(5));
     // }
     app::run_app()
+
+    // loop {
+    //     let rs = qbox_core::get_all_level1();
+    //     println!("{:?}", rs);
+    // }
+    // Ok(())
 }

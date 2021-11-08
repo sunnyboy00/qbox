@@ -64,18 +64,33 @@ pub fn get_level1(security_id: &String) -> Option<Level1> {
 
 pub fn get_all_level1() -> Option<Vec<Level1>> {
     log::trace!("get_all_level1",);
-    let db = sqlite::opendb_read_only().unwrap();
-    //let map = LEVEL1S.read();
-    if let Ok(data) = sqlite::find_all_level1(&db) {
-        if data.len() > 0 {
-            log::trace!("get_all_level1 {:?}", data);
-            //data.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
-            return Some(data);
+    match sqlite::opendb_read_only() {
+        Ok(db) => match sqlite::find_all_level1(&db) {
+            Ok(data) => {
+                let _ = db.close();
+                return Some(data);
+            }
+            Err(err) => {
+                println!("{}", err);
+            }
+        },
+        Err(err) => {
+            println!("{}", err);
         }
     }
-    let _ = db.close();
+    // let db = sqlite::opendb_read_only().unwrap();
+    // //let map = LEVEL1S.read();
+
+    // if let Ok(data) = sqlite::find_all_level1(&db) {
+    //     if data.len() > 0 {
+    //         log::trace!("get_all_level1 {:?}", data);
+    //         //data.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
+    //         return Some(data);
+    //     }
+    // }
+    // let _ = db.close();
     None
-    // let mut data: Vec<Level1> = LEVEL1S.iter().map(|item| item.value().clone()).collect();
+    // let data: Vec<Level1> = LEVEL1S.iter().map(|item| item.value().clone()).collect();
     // if data.len() > 0 {
     //     log::trace!("get_all_level1 {:?}", data);
     //     //data.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
@@ -86,7 +101,7 @@ pub fn get_all_level1() -> Option<Vec<Level1>> {
 }
 
 pub fn find_level1_with_prefix(prefix: &str) -> Option<Vec<Level1>> {
-    let mut data: Vec<Level1> = LEVEL1S
+    let data: Vec<Level1> = LEVEL1S
         .iter()
         .filter(|item| item.key().starts_with(prefix))
         .map(|item| item.value().clone())

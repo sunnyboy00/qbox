@@ -15,7 +15,7 @@ pub(crate) fn init() -> Result<()> {
 fn init_table() -> Result<()> {
     let db = opendb()?;
     db.execute_batch(SCHEMA)?;
-    let _ = db.close();
+    // let _ = db.close();
     Ok(())
 }
 
@@ -60,7 +60,9 @@ pub fn opendb_read_only() -> Result<Connection> {
     let db_path = Path::new(crate::data_path().as_str()).join(DB_NAME);
     let db = Connection::open_with_flags(
         db_path,
-        OpenFlags::SQLITE_OPEN_READ_ONLY | { OpenFlags::SQLITE_OPEN_SHARED_CACHE },
+        OpenFlags::SQLITE_OPEN_READ_ONLY
+            | OpenFlags::SQLITE_OPEN_NO_MUTEX
+            | OpenFlags::SQLITE_OPEN_SHARED_CACHE,
     )?;
     Ok(db)
 }
@@ -123,7 +125,7 @@ pub fn find_all_instruments(db: &Connection) -> Result<Vec<Instrument>> {
 }
 
 pub fn update_level1(db: &Connection, level1: &Level1) -> Result<()> {
-    const SQL: &str = r#"INSERT OR REPLACE INTO quote_level1 (
+    const SQL_INSERT: &str = r#"INSERT quote_level1 (
         security_id,
         exchange,
         time,
@@ -138,16 +140,32 @@ pub fn update_level1(db: &Connection, level1: &Level1) -> Result<()> {
         bids,
         volume,
         turnover,
+        items,
         updated_at
-    ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,CURRENT_TIMESTAMP);"#;
+    ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,CURRENT_TIMESTAMP);"#;
+    const SQL_UPDATE: &str = r#"UPDATE quote_level1 SET
+        time=?1,
+        avg=?2,
+        open=?3,
+        high=?4,
+        low=?5,
+        close=?6,
+        last=?7,
+        last_volume=?8,
+        asks=?9,
+        bids=?10,
+        volume=?11,
+        turnover=?12,
+        items=?13,
+        updated_at=CURRENT_TIMESTAMP
+    WHERE security_id=?14;"#;
     let exchange: &str = level1.exchange.into();
     let asks = ron::to_string(&level1.asks)?;
     let bids = ron::to_string(&level1.bids)?;
-    db.execute(
-        SQL,
+    let items = ron::to_string(&level1.items)?;
+    let len = db.execute(
+        SQL_UPDATE,
         params![
-            level1.security_id,
-            exchange,
             level1.time,
             level1.average,
             level1.open,
@@ -160,66 +178,95 @@ pub fn update_level1(db: &Connection, level1: &Level1) -> Result<()> {
             bids,
             level1.volume,
             level1.turnover,
+            items,
+            level1.security_id,
         ],
     )?;
+    if len == 0 {
+        db.execute(
+            SQL_INSERT,
+            params![
+                level1.security_id,
+                exchange,
+                level1.time,
+                level1.average,
+                level1.open,
+                level1.high,
+                level1.low,
+                level1.close,
+                level1.last,
+                level1.last_volume,
+                asks,
+                bids,
+                level1.volume,
+                level1.turnover,
+                items,
+            ],
+        )?;
+    }
+
     Ok(())
 }
 
 pub fn find_all_level1(db: &Connection) -> Result<Vec<Level1>> {
     let mut ret = vec![];
     const SQL: &str = "SELECT 
-    security_id,
-    exchange,
-    time,
-    avg,
-    open,
-    high,
-    low,
-    close,
-    last,
-    last_volume,
-    asks,
-    bids,
-    volume,
-    turnover,items FROM quote_level1 order by updated_at desc;";
+        security_id,
+        exchange,
+        time,
+        avg,
+        open,
+        high,
+        low,
+        close,
+        last,
+        last_volume,
+        asks,
+        bids,
+        volume,
+        turnover,
+        items
+    FROM 
+        quote_level1 order by updated_at desc;";
     {
         let mut stat = db.prepare(SQL)?;
         let list = stat.query_map([], |row| {
-            let items: String = row.get(14)?;
-
-            let items: Parameter =
-                if let Ok(items) = ron::from_str::<Parameter>(&row.get::<_, String>(14)?) {
-                    items
+            let items: Parameter = if let Ok(items) =
+                ron::from_str::<Parameter>(&row.get::<_, String>(14).unwrap_or_default())
+            {
+                items
+            } else {
+                Parameter::new()
+            };
+            let asks =
+                if let Ok(asks) = ron::from_str(&row.get::<_, String>(10).unwrap_or_default()) {
+                    asks
                 } else {
-                    Parameter::new()
+                    vec![]
                 };
-            let asks = if let Ok(asks) = ron::from_str(&row.get::<_, String>(10)?) {
-                asks
-            } else {
-                vec![]
-            };
-            let bids = if let Ok(bids) = ron::from_str(&row.get::<_, String>(11)?) {
-                bids
-            } else {
-                vec![]
-            };
+            let bids =
+                if let Ok(bids) = ron::from_str(&row.get::<_, String>(11).unwrap_or_default()) {
+                    bids
+                } else {
+                    vec![]
+                };
 
             Ok(Level1::new()
                 .with_secrity_id(row.get::<_, String>(0)?)
                 .with_exchange(Exchange::from(&row.get::<_, String>(1)?))
                 .with_time(row.get(2)?)
-                .with_average(row.get(3)?)
-                .with_open(row.get(4)?)
-                .with_high(row.get(5)?)
-                .with_low(row.get(6)?)
-                .with_close(row.get(7)?)
-                .with_last(row.get(8)?)
-                .with_last_volume(row.get(9)?)
+                .with_average(row.get(3).unwrap_or(f64::NAN))
+                .with_open(row.get(4).unwrap_or(f64::NAN))
+                .with_high(row.get(5).unwrap_or(f64::NAN))
+                .with_low(row.get(6).unwrap_or(f64::NAN))
+                .with_close(row.get(7).unwrap_or(f64::NAN))
+                .with_last(row.get(8).unwrap_or(f64::NAN))
+                .with_last_volume(row.get(9).unwrap_or(f64::NAN))
                 .with_asks(asks)
                 .with_bids(bids)
                 .with_items(items)
-                .with_volume(row.get(12)?)
-                .with_turnover(row.get(13)?))
+                .with_volume(row.get(12).unwrap_or(f64::NAN))
+                .with_turnover(row.get(13).unwrap_or(f64::NAN)))
         })?;
         for instr in list {
             ret.push(instr?);
