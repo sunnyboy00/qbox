@@ -26,7 +26,6 @@ fn main() -> Result<()> {
                 .discriminant("qbox-cli")
                 .suffix("log"),
         )
-        .create_symlink("current_run")
         .start()?;
 
     qbox_core::startup()?;
