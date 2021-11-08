@@ -4,6 +4,7 @@ use chrono::prelude::*;
 use crossbeam::channel::{self, Sender};
 use ctp_rs::{ffi::*, Configuration, FromCBuf, QuoteApi, QuoteSpi, Response};
 use qbox_core::broker::*;
+use qbox_core::Value;
 use std::collections::HashMap;
 use std::ffi::CString;
 use std::ops::Deref;
@@ -306,8 +307,8 @@ impl QuoteSpi for QuoteClient {
                         f64::NAN,
                     ),
                 ])
-                .with_item("trading_date", trading_date)
-                .with_item("action_date", action_date),
+                .with_item("trading_date", Value::String(trading_date))
+                .with_item("action_date", Value::String(action_date)),
         );
         let _ = qbox_core::quotes_event(ev);
     }
