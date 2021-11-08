@@ -168,143 +168,147 @@ impl QuoteSpi for QuoteClient {
             .with_second(time.second())
             .unwrap()
             .timestamp();
-        let ev = QuoteEvent::Level1(Level1 {
-            exchange,
-            trading_date,
-            action_date,
-            security_id,
-            time,
-            open: if q.OpenPrice != f64::MAX {
-                q.OpenPrice
-            } else {
-                f64::NAN
-            },
-            high: if q.HighestPrice != f64::MAX {
-                q.HighestPrice
-            } else {
-                f64::NAN
-            },
-            low: if q.LowestPrice != f64::MAX {
-                q.LowestPrice
-            } else {
-                f64::NAN
-            },
-            close: if q.ClosePrice != f64::MAX {
-                q.ClosePrice
-            } else {
-                q.LastPrice
-            },
-            bids: vec![
-                (
-                    if q.BidPrice1 != f64::MAX {
-                        q.BidPrice1
-                    } else {
-                        f64::NAN
-                    },
-                    q.BidVolume1 as f64,
-                    f64::NAN,
-                    f64::NAN,
-                ),
-                (
-                    if q.BidPrice2 != f64::MAX {
-                        q.BidPrice2
-                    } else {
-                        f64::NAN
-                    },
-                    q.BidVolume2 as f64,
-                    f64::NAN,
-                    f64::NAN,
-                ),
-                (
-                    if q.BidPrice3 != f64::MAX {
-                        q.BidPrice3
-                    } else {
-                        f64::NAN
-                    },
-                    q.BidVolume3 as f64,
-                    f64::NAN,
-                    f64::NAN,
-                ),
-                (
-                    if q.BidPrice4 != f64::MAX {
-                        q.BidPrice5
-                    } else {
-                        f64::NAN
-                    },
-                    q.BidVolume4 as f64,
-                    f64::NAN,
-                    f64::NAN,
-                ),
-                (
-                    if q.BidPrice5 != f64::MAX {
-                        q.BidPrice5
-                    } else {
-                        f64::NAN
-                    },
-                    q.BidVolume5 as f64,
-                    f64::NAN,
-                    f64::NAN,
-                ),
-            ],
-            asks: vec![
-                (
-                    if q.AskPrice1 != f64::MAX {
-                        q.AskPrice1
-                    } else {
-                        f64::NAN
-                    },
-                    q.AskVolume1 as f64,
-                    f64::NAN,
-                    f64::NAN,
-                ),
-                (
-                    if q.AskPrice2 != f64::MAX {
-                        q.AskPrice2
-                    } else {
-                        f64::NAN
-                    },
-                    q.AskVolume2 as f64,
-                    f64::NAN,
-                    f64::NAN,
-                ),
-                (
-                    if q.AskPrice3 != f64::MAX {
-                        q.AskPrice3
-                    } else {
-                        f64::NAN
-                    },
-                    q.AskVolume3 as f64,
-                    f64::NAN,
-                    f64::NAN,
-                ),
-                (
-                    if q.AskPrice4 != f64::MAX {
-                        q.AskPrice4
-                    } else {
-                        f64::NAN
-                    },
-                    q.AskVolume4 as f64,
-                    f64::NAN,
-                    f64::NAN,
-                ),
-                (
-                    if q.AskPrice5 != f64::MAX {
-                        q.AskPrice5
-                    } else {
-                        f64::NAN
-                    },
-                    q.AskVolume5 as f64,
-                    f64::NAN,
-                    f64::NAN,
-                ),
-            ],
-            average: q.AveragePrice,
-            last: q.LastPrice,
-            last_quantity: f64::NAN,
-            volume: q.Volume as f64,
-            turnover: q.Turnover,
-            score: 1.0,
-        });
+
+        let ev = QuoteEvent::Level1(
+            Level1::new()
+                .with_secrity_id(security_id)
+                .with_exchange(exchange)
+                .with_time(time)
+                .with_average(q.AveragePrice)
+                .with_open(if q.OpenPrice != f64::MAX {
+                    q.OpenPrice
+                } else {
+                    f64::NAN
+                })
+                .with_high(if q.HighestPrice != f64::MAX {
+                    q.HighestPrice
+                } else {
+                    f64::NAN
+                })
+                .with_low(if q.LowestPrice != f64::MAX {
+                    q.LowestPrice
+                } else {
+                    f64::NAN
+                })
+                .with_close(if q.ClosePrice != f64::MAX {
+                    q.ClosePrice
+                } else {
+                    q.LastPrice
+                })
+                .with_last(if q.LastPrice != f64::MAX {
+                    q.LastPrice
+                } else {
+                    q.LastPrice
+                })
+                .with_volume(q.Volume as f64)
+                .with_turnover(q.Turnover)
+                .with_bids(vec![
+                    (
+                        if q.BidPrice1 != f64::MAX {
+                            q.BidPrice1
+                        } else {
+                            f64::NAN
+                        },
+                        q.BidVolume1 as f64,
+                        f64::NAN,
+                        f64::NAN,
+                    ),
+                    (
+                        if q.BidPrice2 != f64::MAX {
+                            q.BidPrice2
+                        } else {
+                            f64::NAN
+                        },
+                        q.BidVolume2 as f64,
+                        f64::NAN,
+                        f64::NAN,
+                    ),
+                    (
+                        if q.BidPrice3 != f64::MAX {
+                            q.BidPrice3
+                        } else {
+                            f64::NAN
+                        },
+                        q.BidVolume3 as f64,
+                        f64::NAN,
+                        f64::NAN,
+                    ),
+                    (
+                        if q.BidPrice4 != f64::MAX {
+                            q.BidPrice5
+                        } else {
+                            f64::NAN
+                        },
+                        q.BidVolume4 as f64,
+                        f64::NAN,
+                        f64::NAN,
+                    ),
+                    (
+                        if q.BidPrice5 != f64::MAX {
+                            q.BidPrice5
+                        } else {
+                            f64::NAN
+                        },
+                        q.BidVolume5 as f64,
+                        f64::NAN,
+                        f64::NAN,
+                    ),
+                ])
+                .with_asks(vec![
+                    (
+                        if q.AskPrice1 != f64::MAX {
+                            q.AskPrice1
+                        } else {
+                            f64::NAN
+                        },
+                        q.AskVolume1 as f64,
+                        f64::NAN,
+                        f64::NAN,
+                    ),
+                    (
+                        if q.AskPrice2 != f64::MAX {
+                            q.AskPrice2
+                        } else {
+                            f64::NAN
+                        },
+                        q.AskVolume2 as f64,
+                        f64::NAN,
+                        f64::NAN,
+                    ),
+                    (
+                        if q.AskPrice3 != f64::MAX {
+                            q.AskPrice3
+                        } else {
+                            f64::NAN
+                        },
+                        q.AskVolume3 as f64,
+                        f64::NAN,
+                        f64::NAN,
+                    ),
+                    (
+                        if q.AskPrice4 != f64::MAX {
+                            q.AskPrice4
+                        } else {
+                            f64::NAN
+                        },
+                        q.AskVolume4 as f64,
+                        f64::NAN,
+                        f64::NAN,
+                    ),
+                    (
+                        if q.AskPrice5 != f64::MAX {
+                            q.AskPrice5
+                        } else {
+                            f64::NAN
+                        },
+                        q.AskVolume5 as f64,
+                        f64::NAN,
+                        f64::NAN,
+                    ),
+                ])
+                .with_item("trading_date", trading_date)
+                .with_item("action_date", action_date),
+        );
         let _ = qbox_core::quotes_event(ev);
     }
 }

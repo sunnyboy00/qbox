@@ -72,11 +72,12 @@ CREATE TABLE IF NOT EXISTS quote_level1 (
     low REAL,
     close REAL,
     last REAL,
-    last_volum REAL,
+    last_volume REAL,
     asks TEXT,
     bids TEXT,
     volume REAL,
     turnover REAL,
+    items TEXT,
     created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

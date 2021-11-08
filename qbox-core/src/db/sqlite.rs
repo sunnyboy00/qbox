@@ -1,4 +1,4 @@
-use crate::broker::{Exchange, InstState, Instrument, Level1, TradeKind};
+use crate::broker::{Depth, Exchange, InstState, Instrument, Level1, TradeKind};
 use crate::Parameter;
 use anyhow::Result;
 use rusqlite::{params, Connection, OpenFlags};
@@ -133,7 +133,7 @@ pub fn update_level1(db: &Connection, level1: &Level1) -> Result<()> {
         low,
         close,
         last,
-        last_volum,
+        last_volume,
         asks,
         bids,
         volume,
@@ -155,7 +155,7 @@ pub fn update_level1(db: &Connection, level1: &Level1) -> Result<()> {
             level1.low,
             level1.close,
             level1.last,
-            level1.last_quantity,
+            level1.last_volume,
             asks,
             bids,
             level1.volume,
@@ -164,4 +164,67 @@ pub fn update_level1(db: &Connection, level1: &Level1) -> Result<()> {
         ],
     )?;
     Ok(())
+}
+
+pub fn find_all_level1(db: &Connection) -> Result<Vec<Level1>> {
+    let mut ret = vec![];
+    const SQL: &str = "SELECT 
+    security_id,
+    exchange,
+    time,
+    avg,
+    open,
+    high,
+    low,
+    close,
+    last,
+    last_volume,
+    asks,
+    bids,
+    volume,
+    turnover,items FROM quote_level1 order by updated_at desc;";
+    {
+        let mut stat = db.prepare(SQL)?;
+        let list = stat.query_map([], |row| {
+            let items: String = row.get(14)?;
+
+            let items: Parameter =
+                if let Ok(items) = ron::from_str::<Parameter>(&row.get::<_, String>(14)?) {
+                    items
+                } else {
+                    Parameter::new()
+                };
+            let asks = if let Ok(asks) = ron::from_str(&row.get::<_, String>(10)?) {
+                asks
+            } else {
+                vec![]
+            };
+            let bids = if let Ok(bids) = ron::from_str(&row.get::<_, String>(11)?) {
+                bids
+            } else {
+                vec![]
+            };
+
+            Ok(Level1::new()
+                .with_secrity_id(row.get::<_, String>(0)?)
+                .with_exchange(Exchange::from(&row.get::<_, String>(1)?))
+                .with_time(row.get(2)?)
+                .with_average(row.get(3)?)
+                .with_open(row.get(4)?)
+                .with_high(row.get(5)?)
+                .with_low(row.get(6)?)
+                .with_close(row.get(7)?)
+                .with_last(row.get(8)?)
+                .with_last_volume(row.get(9)?)
+                .with_asks(asks)
+                .with_bids(bids)
+                .with_items(items)
+                .with_volume(row.get(12)?)
+                .with_turnover(row.get(13)?))
+        })?;
+        for instr in list {
+            ret.push(instr?);
+        }
+    }
+    Ok(ret)
 }

@@ -710,21 +710,116 @@ pub struct TickToTrade {
 pub struct Level1 {
     pub security_id: String, //证券代码
     pub exchange: Exchange,
-    pub trading_date: String,
-    pub action_date: String,
     pub time: i64,
-    pub open: f64,          //开盘价
-    pub high: f64,          //最高价
-    pub low: f64,           //最低价
-    pub close: f64,         //收盘价
-    pub bids: Vec<Depth>,   //出价
-    pub asks: Vec<Depth>,   //要价
-    pub average: f64,       //均价
-    pub last: f64,          //最新价
-    pub last_quantity: f64, //最新成交量
-    pub volume: f64,        //24小时成交量
-    pub turnover: f64,      //24小时最新成交额
-    pub score: f64,         //得分
+    pub open: f64,        //开盘价
+    pub high: f64,        //最高价
+    pub low: f64,         //最低价
+    pub close: f64,       //收盘价
+    pub bids: Vec<Depth>, //出价
+    pub asks: Vec<Depth>, //要价
+    pub average: f64,     //均价
+    pub last: f64,        //最新价
+    pub last_volume: f64, //最新成交量
+    pub volume: f64,      //24小时成交量
+    pub turnover: f64,    //24小时最新成交额
+    pub items: Parameter,
+}
+
+impl Level1 {
+    pub fn new() -> Self {
+        Self {
+            security_id: Default::default(),
+            exchange: Exchange::UNKNOWN,
+            time: Default::default(),
+            average: f64::NAN,
+            open: f64::NAN,
+            high: f64::NAN,
+            low: f64::NAN,
+            close: f64::NAN,
+            last: f64::NAN,
+            last_volume: f64::NAN,
+            asks: Default::default(),
+            bids: Default::default(),
+            volume: f64::NAN,
+            turnover: f64::NAN,
+            items: Parameter::new(),
+        }
+    }
+
+    pub fn with_secrity_id<T: Into<String>>(mut self, security_id: T) -> Self {
+        self.security_id = security_id.into();
+        self
+    }
+
+    pub fn with_exchange(mut self, ex: Exchange) -> Self {
+        self.exchange = ex;
+        self
+    }
+
+    pub fn with_time(mut self, time: i64) -> Self {
+        self.time = time;
+        self
+    }
+
+    pub fn with_average(mut self, average: f64) -> Self {
+        self.average = average;
+        self
+    }
+
+    pub fn with_open(mut self, open: f64) -> Self {
+        self.open = open;
+        self
+    }
+    pub fn with_high(mut self, high: f64) -> Self {
+        self.high = high;
+        self
+    }
+    pub fn with_low(mut self, low: f64) -> Self {
+        self.low = low;
+        self
+    }
+    pub fn with_close(mut self, close: f64) -> Self {
+        self.close = close;
+        self
+    }
+    pub fn with_last(mut self, last: f64) -> Self {
+        self.last = last;
+        self
+    }
+    pub fn with_last_volume(mut self, last_volume: f64) -> Self {
+        self.last_volume = last_volume;
+        self
+    }
+    pub fn with_volume(mut self, volume: f64) -> Self {
+        self.volume = volume;
+        self
+    }
+    pub fn with_turnover(mut self, turnover: f64) -> Self {
+        self.turnover = turnover;
+        self
+    }
+    pub fn with_asks(mut self, asks: Vec<Depth>) -> Self {
+        self.asks = asks;
+        self
+    }
+    pub fn with_bids(mut self, bids: Vec<Depth>) -> Self {
+        self.bids = bids;
+        self
+    }
+    pub fn with_items(mut self, val: Parameter) -> Self {
+        self.items = val;
+        self
+    }
+    pub fn with_item<I: Into<Item>>(mut self, item: I, val: Value) -> Self {
+        self.items.insert(item.into(), val);
+        self
+    }
+}
+
+impl Default for Level1 {
+    fn default() -> Self {
+        Level1::new()
+    }
 }
 
 impl Level1 {
@@ -741,7 +836,7 @@ impl Level1 {
             } else {
                 self.close
             },
-            volume: self.last_quantity,
+            volume: self.last_volume,
             turnover: Some(self.turnover),
         }
     }
