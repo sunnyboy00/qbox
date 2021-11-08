@@ -21,7 +21,7 @@ fn main() -> Result<()> {
         .log_to_file(
             FileSpec::default()
                 .suppress_timestamp()
-                .directory(Path::new(&log_path).join("logs"))
+                .directory(Path::new(&log_path))
                 .basename("qbox")
                 .discriminant("qbox-cli")
                 .suffix("log"),
