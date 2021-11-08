@@ -125,7 +125,7 @@ pub fn find_all_instruments(db: &Connection) -> Result<Vec<Instrument>> {
 }
 
 pub fn update_level1(db: &Connection, level1: &Level1) -> Result<()> {
-    const SQL_INSERT: &str = r#"INSERT quote_level1 (
+    const SQL_INSERT: &str = r#"INSERT INTO quote_level1 (
         security_id,
         exchange,
         time,
@@ -163,7 +163,7 @@ pub fn update_level1(db: &Connection, level1: &Level1) -> Result<()> {
     let asks = ron::to_string(&level1.asks)?;
     let bids = ron::to_string(&level1.bids)?;
     let items = ron::to_string(&level1.items)?;
-    let len = db.execute(
+    if let Err(_err) = db.execute(
         SQL_UPDATE,
         params![
             level1.time,
@@ -181,8 +181,7 @@ pub fn update_level1(db: &Connection, level1: &Level1) -> Result<()> {
             items,
             level1.security_id,
         ],
-    )?;
-    if len == 0 {
+    ) {
         db.execute(
             SQL_INSERT,
             params![
