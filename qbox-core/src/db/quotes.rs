@@ -73,6 +73,7 @@ pub fn get_all_level1() -> Option<Vec<Level1>> {
             return Some(data);
         }
     }
+    let _ = db.close();
     None
     // let mut data: Vec<Level1> = LEVEL1S.iter().map(|item| item.value().clone()).collect();
     // if data.len() > 0 {
