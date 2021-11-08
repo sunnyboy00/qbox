@@ -15,13 +15,13 @@ use url::Url;
 
 fn main() -> Result<()> {
     let opt = Opt::from_file(std::env::args().nth(2).take().unwrap().as_str())?;
-
+    let log_path = qbox_core::log_path();
     Logger::try_with_str(opt.level.as_str())?
         .format(flexi_logger::detailed_format)
         .log_to_file(
             FileSpec::default()
                 .suppress_timestamp()
-                .directory(&Path::new(qbox_core::log_path()).join("logs"))
+                .directory(Path::new(&log_path).join("logs"))
                 .basename("qbox")
                 .discriminant("qbox-cli")
                 .suffix("log"),
