@@ -120,7 +120,6 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         "最高价",
         "最低价",
         "收盘价",
-        "score",
     ]
     .iter()
     .map(|h| Cell::from(*h).style(Style::default().fg(Color::Red)));
@@ -144,7 +143,6 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
             Cell::from(item.high.to_string()),
             Cell::from(item.low.to_string()),
             Cell::from(item.close.to_string()),
-            Cell::from(item.score.to_string()),
         ];
         Row::new(cells).bottom_margin(0)
     });
@@ -154,7 +152,6 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .highlight_style(selected_style)
         //.highlight_symbol(">> ")
         .widths(&[
-            Constraint::Percentage(10),
             Constraint::Percentage(10),
             Constraint::Percentage(10),
             Constraint::Percentage(10),
