@@ -48,3 +48,5 @@ url = "2.2.2"
 ctp-rs = {path = "../../ctp-rs"}
 log = "0.4"
 qbox-core = {path = "../qbox-core"}
+
+urlencoding = "2.1.0"

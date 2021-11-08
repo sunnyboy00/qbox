@@ -8,7 +8,8 @@ use std::collections::HashMap;
 use std::ffi::CString;
 use std::ops::Deref;
 use std::path::Path;
-use url::{Host, Url};
+use url::Url;
+use urlencoding::decode;
 
 impl Quotes for CTP {
     fn subscribe(&self, filter: &[&str]) {
@@ -32,8 +33,8 @@ impl CTP {
             .get("broker_id")
             .unwrap_or(&String::from(""))
             .to_owned();
-        let user_id = uri.username().to_owned();
-        let passwd = uri.password().unwrap_or("").to_owned();
+        let user_id = decode(uri.username())?.to_string();
+        let passwd = decode(uri.password().unwrap_or(""))?.to_string();
         let _investor_id = params
             .get("investor_id")
             .unwrap_or(&String::from(""))
