@@ -9,6 +9,7 @@ use opt::Opt;
 use qbox_core::broker::*;
 use qbox_core::{topics, Event};
 use std::io::Write;
+use std::path::Path;
 use std::str::FromStr;
 use url::Url;
 
@@ -20,7 +21,7 @@ fn main() -> Result<()> {
         .log_to_file(
             FileSpec::default()
                 .suppress_timestamp()
-                .directory("logs")
+                .directory(Path::new(qbox_core::log_path()).join("logs"))
                 .basename("qbox")
                 .discriminant("qbox-cli")
                 .suffix("log"),
