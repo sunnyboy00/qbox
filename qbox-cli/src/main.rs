@@ -29,7 +29,7 @@ fn main() -> Result<()> {
         .start()?;
 
     qbox_core::startup()?;
-    qbox_broker::load_counter()?;
+    qbox_broker::load_driver()?;
 
     let quoter = quoter::spawn(Url::parse(opt.quote_dsn.as_str())?)?;
     let trader = trader::spawn(Url::parse(opt.trade_dsn.as_str())?)?;

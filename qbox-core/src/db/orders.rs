@@ -1,5 +1,5 @@
 use crate::broker::{Order, TradeEvent, Transaction};
-use crate::bus::{self, topics, Event, Topic};
+use crate::bus::{self, topics, Event};
 use ahash::RandomState;
 use anyhow::Result;
 use dashmap::DashMap;
@@ -75,7 +75,7 @@ pub(crate) fn init() -> Result<()> {
     Ok(())
 }
 
-fn process(topic: Topic, ev: Arc<Event>) {
+fn process(topic: &str, ev: Arc<Event>) {
     log::trace!("process {:?}", ev);
     if let Event::Trade(tev) = ev.as_ref() {
         match tev {

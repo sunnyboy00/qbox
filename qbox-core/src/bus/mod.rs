@@ -32,24 +32,24 @@ pub fn broadcast(msg: Event) -> Result<()> {
 
 //发布消息
 #[inline]
-pub fn publish(topic: Topic, msg: Event) -> Result<()> {
-    log::trace!("publish {} {:?}", topic, msg);
+pub fn publish<S: AsRef<str>>(topic: S, msg: Event) -> Result<()> {
+    log::trace!("publish {} {:?}", topic.as_ref(), msg);
     BUS.publish(topic, msg.arced())
 }
 
 //订阅消息
 #[inline]
-pub fn subscribe(
-    topic: Topic,
-    f: impl Fn(Topic, Arc<Event>) + Send + Sync + 'static,
+pub fn subscribe<S: AsRef<str>>(
+    topic: S,
+    f: impl Fn(&str, Arc<Event>) + Send + Sync + 'static,
 ) -> Result<Token> {
-    log::trace!("subscribe {}", topic);
+    log::trace!("subscribe {}", topic.as_ref());
     BUS.subscribe(topic, f)
 }
 
 #[inline]
 pub fn log(msg: String) -> Result<()> {
-    publish(topics::LOG, Event::Log(msg))
+    publish(topics::LOG.to_string(), Event::Log(msg))
 }
 
 #[inline]
@@ -73,8 +73,8 @@ pub enum Event {
     Startup,
     //关机
     Shutdown,
-    StartCounter(Url),
-    StopCounter(Url),
+    StartQuoter(Url),
+    StopQuoter(Url),
     StartTrader(Url),
     StopTrader(Url),
     Trade(TradeEvent),
@@ -91,70 +91,20 @@ impl Event {
     }
 }
 
-pub type Topic = &'static str;
 #[derive(Debug, Clone)]
 pub struct Token {
-    pub topic: Topic,
+    pub topic: String,
     pub id: String,
 }
 
 pub trait EventBus {
     type Message;
-    fn publish(&self, topic: Topic, msg: Self::Message) -> Result<()>;
-    fn subscribe(
+    fn publish<TOPIC: AsRef<str>>(&self, topic: TOPIC, msg: Self::Message) -> Result<()>;
+    fn subscribe<TOPIC: AsRef<str>>(
         &self,
-        topic: Topic,
-        f: impl Fn(Topic, Self::Message) + Send + Sync + 'static,
+        topic: TOPIC,
+        f: impl Fn(&str, Self::Message) + Send + Sync + 'static,
     ) -> Result<Token>;
     fn unsubscribe(&self, token: &Token);
-    fn with_filter(&self, topic: Topic, filter: impl Filter<Self::Message> + 'static);
-}
-
-pub trait Filter<T>: Send + Sync {
-    fn name(&self) -> &'static str {
-        "Filter"
-    }
-
-    fn do_filter(&self, event: &T) -> Result<()>;
-
-    fn chain<R: Filter<T>>(self, next: R) -> Chain<Self, R>
-    where
-        Self: Sized,
-    {
-        Chain {
-            first: self,
-            second: next,
-        }
-    }
-}
-
-#[derive(Default, Clone)]
-pub struct Chain<W, U> {
-    first: W,
-    second: U,
-}
-
-impl<W, U> Chain<W, U> {
-    pub fn into_inner(self) -> (W, U) {
-        (self.first, self.second)
-    }
-
-    pub fn get_ref(&self) -> (&W, &U) {
-        (&self.first, &self.second)
-    }
-    pub fn get_mut(&mut self) -> (&mut W, &mut U) {
-        (&mut self.first, &mut self.second)
-    }
-}
-
-impl<T, W: Filter<T>, U: Filter<T>> Filter<T> for Chain<W, U> {
-    fn name(&self) -> &'static str {
-        "FilterChain"
-    }
-
-    fn do_filter(&self, req: &T) -> Result<()> {
-        self.first.do_filter(req)?;
-        self.second.do_filter(req)?;
-        Ok(())
-    }
+    //fn with_filter(&self, topic: Topic, filter: impl Filter<Self::Message> + 'static);
 }

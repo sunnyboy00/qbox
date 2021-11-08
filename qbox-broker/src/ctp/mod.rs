@@ -33,14 +33,14 @@ pub struct CTPDriver;
 
 impl Driver for CTPDriver {
     fn create(&self, uri: Url) -> Result<Arc<dyn Counter>> {
-        if uri.path() == "/quotes" {
+        if uri.path().starts_with("/quotes") {
             let ctp = CTP::new_quote(uri)?;
             return Ok(Arc::new(ctp));
         }
-        if uri.path() == "/trades" {
+        if uri.path().starts_with("/trades") {
             let ctp = CTP::new_trade(uri)?;
             return Ok(Arc::new(ctp));
         }
-        Err(anyhow::anyhow!("unsupported uri {}", uri))
+        Err(anyhow::anyhow!("error uri: {}", uri))
     }
 }

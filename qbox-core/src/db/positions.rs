@@ -1,5 +1,5 @@
 use crate::broker::{Position, TradeEvent};
-use crate::bus::{self, topics, Event, Topic};
+use crate::bus::{self, topics, Event};
 use anyhow::Result;
 use lazy_static::lazy_static;
 use parking_lot::RwLock;
@@ -62,7 +62,7 @@ pub(crate) fn init() -> Result<()> {
     Ok(())
 }
 
-fn process(topic: Topic, ev: Arc<Event>) {
+fn process(topic: &str, ev: Arc<Event>) {
     log::trace!("process {:?}", ev);
     if let Event::Trade(tev) = ev.as_ref() {
         match tev {

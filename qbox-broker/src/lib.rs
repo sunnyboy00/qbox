@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 
 //加载柜台驱动
 #[cfg(target_arch = "x86_64")]
-pub fn load_counter() -> Result<()> {
+pub fn load_driver() -> Result<()> {
     #[cfg(any(target_os = "windows", target_os = "linux"))]
     {
         log::debug!("加载CTP驱动");

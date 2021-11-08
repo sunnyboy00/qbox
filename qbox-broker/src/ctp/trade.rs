@@ -16,11 +16,8 @@ impl CTP {
             .get("broker_id")
             .unwrap_or(&String::from(""))
             .to_owned();
-        let user_id = params
-            .get("user_id")
-            .unwrap_or(&String::from(""))
-            .to_owned();
-        let passwd = params.get("passwd").unwrap_or(&String::from("")).to_owned();
+        let user_id = uri.username().to_owned();
+        let passwd = uri.password().unwrap_or("").to_owned();
         let _investor_id = params
             .get("investor_id")
             .unwrap_or(&String::from(""))
@@ -30,10 +27,19 @@ impl CTP {
             .get("auth_code")
             .unwrap_or(&String::from(""))
             .to_owned();
-        let host = uri.host().unwrap_or(Host::Domain("".into()));
+        let host = uri.host_str().unwrap_or_default();
         let port = uri.port().unwrap_or_default();
         let front_addr = format!("tcp://{}:{}", host, port);
-        let work_path = Path::new(&qbox_core::get_exec_path()).join("ctp.trade");
+        let work_path = Path::new(
+            &std::env::current_exe()
+                .unwrap()
+                .parent()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_string(),
+        )
+        .join("ctp.trade");
         if !work_path.exists() {
             std::fs::create_dir_all(&work_path)?;
         }

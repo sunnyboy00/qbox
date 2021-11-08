@@ -243,9 +243,9 @@ impl Default for TradeKind {
     }
 }
 
-impl From<&str> for TradeKind {
-    fn from(s: &str) -> Self {
-        let s = s.to_uppercase();
+impl<S: AsRef<str>> From<S> for TradeKind {
+    fn from(s: S) -> Self {
+        let s = s.as_ref().to_uppercase();
         match s.as_str() {
             "SPOT" => TradeKind::SPOT,
             "SWAP" => TradeKind::SWAP,
@@ -391,6 +391,33 @@ pub enum InstState {
     Unknown,  //未知
 }
 
+impl<S: AsRef<str>> From<S> for InstState {
+    fn from(s: S) -> Self {
+        let s = s.as_ref();
+        match s {
+            "NotStart" => InstState::NotStart,
+            "Started" => InstState::Started,
+            "Pause" => InstState::Pause,
+            "Trading" => InstState::Trading,
+            "Expired" => InstState::Expired,
+            _ => InstState::Unknown,
+        }
+    }
+}
+
+impl<'a> Into<&'a str> for InstState {
+    fn into(self) -> &'a str {
+        match self {
+            InstState::NotStart => "NotStart",
+            InstState::Started => "Started",
+            InstState::Pause => "Pause",
+            InstState::Trading => "Trading",
+            InstState::Expired => "Expired",
+            InstState::Unknown => "Unknown",
+        }
+    }
+}
+
 impl Default for InstState {
     fn default() -> Self {
         InstState::Unknown
@@ -454,7 +481,7 @@ impl Instrument {
         self.quote_currency = val;
         self
     }
-    pub fn with_items(mut self, val: HashMap<Item, Value>) -> Self {
+    pub fn with_items(mut self, val: Parameter) -> Self {
         self.items = val;
         self
     }
@@ -698,6 +725,26 @@ pub struct Level1 {
     pub volume: f64,        //24小时成交量
     pub turnover: f64,      //24小时最新成交额
     pub score: f64,         //得分
+}
+
+impl Level1 {
+    pub fn to_bar(&self) -> Bar {
+        Bar {
+            security_id: self.security_id.clone(),
+            exchange: self.exchange,
+            time: self.time,
+            open: self.open,
+            high: self.high,
+            low: self.low,
+            close: if self.close == f64::NAN {
+                self.last
+            } else {
+                self.close
+            },
+            volume: self.last_quantity,
+            turnover: Some(self.turnover),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize)]

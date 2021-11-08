@@ -3,6 +3,8 @@
 
 mod bus;
 mod db;
+mod filters;
+mod setting;
 
 pub mod broker;
 pub mod indicators;
@@ -15,6 +17,7 @@ pub use db::*;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
 
 const DATA_PATH: &str = "data";
 const LOG_PATH: &str = "logs";
@@ -29,17 +32,7 @@ pub fn startup() -> Result<()> {
     Ok(())
 }
 
-pub fn get_exec_path() -> String {
-    std::env::current_exe()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .to_str()
-        .unwrap()
-        .to_string()
-}
-
-pub fn get_data_path() -> String {
+pub fn data_path() -> String {
     let data_path = std::env::current_exe()
         .unwrap()
         .parent()
@@ -51,7 +44,7 @@ pub fn get_data_path() -> String {
     data_path.to_str().unwrap().to_string()
 }
 
-pub fn get_log_path() -> String {
+pub fn log_path() -> String {
     let log_path = std::env::current_exe()
         .unwrap()
         .parent()
@@ -84,4 +77,33 @@ pub enum Value {
     Bytes(Vec<u8>),
 }
 
-pub type Parameter = HashMap<Item, Value>;
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct Parameter(HashMap<Item, Value>);
+
+impl Deref for Parameter {
+    type Target = HashMap<Item, Value>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Parameter {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl Parameter {
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self(HashMap::with_capacity(capacity))
+    }
+
+    pub fn with<S: AsRef<str>>(mut self, key: S, val: Value) -> Self {
+        self.insert(key.as_ref().into(), val);
+        self
+    }
+}
