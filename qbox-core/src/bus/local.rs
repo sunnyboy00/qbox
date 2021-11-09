@@ -6,16 +6,16 @@ use rayon::prelude::*;
 use std::any::Any;
 pub struct LocalBus<T> {
     subscriber: DashMap<String, Vec<(Token, Box<dyn Fn(&str, T) + Send + Sync>)>, RandomState>,
-    //filters: DashMap<Topic, Box<dyn Filter<T>>, RandomState>,
+    call_fn: DashMap<String, Box<dyn Fn(&str, T) -> Result<T> + Send + Sync>, RandomState>,
 }
 
 impl<T> LocalBus<T> {
     pub fn new() -> Self {
         let subscriber = DashMap::with_hasher(RandomState::new());
-        // let filters = DashMap::with_hasher(RandomState::new());
+        let call_fn = DashMap::with_hasher(RandomState::new());
         Self {
             subscriber,
-            //filters,
+            call_fn,
         }
     }
 }
@@ -64,9 +64,35 @@ impl<T: Send + Sync + Clone> EventBus for LocalBus<T> {
         }
     }
 
-    // fn with_filter(&self, topic: Topic, filter: impl Filter<Self::Message> + 'static) {
-    //     self.filters.insert(topic, Box::new(filter));
-    // }
+    fn call<TOPIC: AsRef<str>>(&self, topic: TOPIC, msg: T) -> Result<T> {
+        let topic = topic.as_ref();
+        if let Some(item) = self.call_fn.get(topic) {
+            return item.value()(topic, msg.clone());
+        }
+        Err(anyhow::anyhow!("call topic {} not found", topic))
+    }
+    fn register_fn<TOPIC: AsRef<str>>(
+        &self,
+        topic: TOPIC,
+        f: impl Fn(&str, T) -> Result<T> + Send + Sync + 'static,
+    ) -> Result<()> {
+        let topic = topic.as_ref();
+        if self.call_fn.contains_key(topic) {
+            return Err(anyhow::anyhow!("register_fn {} existed", topic));
+        }
+        let bf = Box::new(f) as Box<dyn Fn(&str, T) -> Result<T> + Send + Sync>;
+        self.call_fn.insert(topic.into(), bf);
+        Ok(())
+    }
+
+    fn unregister_fn<TOPIC: AsRef<str>>(&self, topic: TOPIC) -> Result<()> {
+        let topic = topic.as_ref();
+        if !self.call_fn.contains_key(topic) {
+            return Err(anyhow::anyhow!("unregister_fn {} not found", topic));
+        }
+        self.call_fn.remove(topic);
+        Ok(())
+    }
 }
 
 mod tests {

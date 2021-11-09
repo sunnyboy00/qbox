@@ -15,6 +15,7 @@ lazy_static! {
 #[derive(Clone)]
 pub struct Trader {
     pub name: String,
+    pub uri: Url,
     inner: Arc<dyn Trades>,
 }
 
@@ -34,14 +35,17 @@ pub fn spawn(uri: Url) -> Result<Trader> {
         uri.port().unwrap_or(0),
         uri.path()
     );
-
-    if TRADERS.contains_key(&name) {
-        return Err(anyhow::anyhow!("trader {} exist", name));
+    if let Some(trader) = get(&name) {
+        return Ok(trader);
     }
+    // if TRADERS.contains_key(&name) {
+    //     return Err(anyhow::anyhow!("trader {} exist", name));
+    // }
     log::debug!("spwan trades {}", uri);
     let inner = Factory::create(uri.clone())?;
     let exec = Trader {
         name: name.clone(),
+        uri,
         inner,
     };
 

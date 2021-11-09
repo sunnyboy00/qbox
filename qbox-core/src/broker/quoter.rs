@@ -15,6 +15,7 @@ lazy_static! {
 #[derive(Clone)]
 pub struct Quoter {
     pub name: String,
+    pub uri: Url,
     inner: Arc<dyn Quotes>,
 }
 
@@ -34,15 +35,18 @@ pub fn spawn(uri: Url) -> Result<Quoter> {
         uri.port().unwrap_or(0),
         uri.path()
     );
-
-    if QUOTERS.contains_key(&name) {
-        return Err(anyhow::anyhow!("quoter {} exist", name));
+    if let Some(quoter) = get(&name) {
+        return Ok(quoter);
     }
+    // if QUOTERS.contains_key(&name) {
+    //     return Err(anyhow::anyhow!("quoter {} exist", name));
+    // }
     log::debug!("spawn quotes {}", uri);
 
     let inner = Factory::create(uri.clone())?;
     let exec = Quoter {
         name: name.clone(),
+        uri,
         inner,
     };
     QUOTERS.insert(name, exec.clone());
