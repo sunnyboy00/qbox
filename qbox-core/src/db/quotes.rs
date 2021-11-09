@@ -2,7 +2,7 @@ use super::sqlite;
 use crate::broker::{
     Bar, Instrument, Level1, Level2, QuoteEvent, TickToOffer, TickToTrade, TradeEvent,
 };
-use crate::bus::{self, topics, Event};
+use crate::core::{self, *};
 use ahash::RandomState;
 use anyhow::Result;
 use crossbeam::channel::{self, Receiver};
@@ -145,7 +145,7 @@ pub(crate) fn init() -> Result<()> {
     let tx1 = tx.clone();
     let tx2 = tx.clone();
     quote_worker(rx)?;
-    let _ = bus::subscribe(topics::QUOTES_EVENT, move |_, ev| {
+    let _ = core::subscribe(topics::QUOTES_EVENT, move |_, ev| {
         match ev.as_ref() {
             Event::Quote(quote) => match quote {
                 QuoteEvent::Level1(level1) => {
@@ -209,7 +209,7 @@ pub(crate) fn init() -> Result<()> {
         }
         // tx1.send(ev).ok();
     })?;
-    let _ = bus::subscribe(topics::QUERY_EVENT, move |_, ev| {
+    let _ = core::subscribe(topics::QUERY_EVENT, move |_, ev| {
         match ev.as_ref() {
             Event::Trade(TradeEvent::InstrumentsResponse(instr)) => {
                 INSTRUMENTS.insert(instr.security_id.clone(), instr.clone());
@@ -233,17 +233,6 @@ fn quote_worker(rx: Receiver<Arc<Event>>) -> Result<()> {
                 Ok(ev) => {
                     log::trace!("process {:?}", ev);
                     match ev.as_ref() {
-                        // Event::Quote(quote) => match quote {
-                        //     QuoteEvent::Level1(level1) => {
-                        //         // if let Err(err) = sqlite::update_level1(&db, level1) {
-                        //         //     log::error!("sqlite error {:?}", err);
-                        //         // }
-                        //     }
-                        //     QuoteEvent::Bar(bar) => {}
-                        //     QuoteEvent::Level2(level2) => {}
-                        //     QuoteEvent::TickToOffer(tto) => {}
-                        //     QuoteEvent::TickToTrade(ttt) => {}
-                        // },
                         Event::Trade(TradeEvent::InstrumentsResponse(instr)) => {
                             if let Err(err) = sqlite::insert_instrument(&db, instr) {
                                 log::error!("sqlite error {:?}", err);

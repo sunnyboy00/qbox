@@ -3,7 +3,8 @@ use anyhow::anyhow;
 use anyhow::Result;
 use crossbeam::channel::{self, Sender};
 use ctp_rs::{ffi::*, Configuration, FromCBuf, Response, ResumeType, ToArray, TradeApi, TradeSpi};
-use qbox_core::{broker::*, Value};
+use qbox_core::broker::*;
+use qbox_core::core;
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::Path;
@@ -98,12 +99,12 @@ impl TradeSpi for TradeClient {
 
     fn on_disconnected(&self, reason: i32) {
         log::trace!("on_disconnected {}", reason);
-        let _ = qbox_core::log(format!("on_disconnected 0x{:#04x}", reason));
+        let _ = core::log(format!("on_disconnected 0x{:#04x}", reason));
     }
 
     fn on_error(&self, result: &Response) {
         log::trace!("on_error {:?}", result);
-        let _ = qbox_core::log(format!("on_error {:?}", result));
+        let _ = core::log(format!("on_error {:?}", result));
     }
     ///登录请求响应
     fn on_user_login(&self, info: &CThostFtdcRspUserLoginField, result: &Response) {
@@ -116,13 +117,13 @@ impl TradeSpi for TradeClient {
     }
 
     fn on_user_password_update(&self, info: &CThostFtdcUserPasswordUpdateField, result: &Response) {
-        let _ = qbox_core::log(format!("on_user_password_update {:?} {:?}", info, result));
+        let _ = core::log(format!("on_user_password_update {:?} {:?}", info, result));
     }
 
     ///请求查询合约响应
     fn on_qry_instrument(&self, instr: Option<&CThostFtdcInstrumentField>, result: &Response) {
         if result.code != 0 {
-            let _ = qbox_core::log(format!("on_qry_instrument {:?} {:?}", instr, result));
+            let _ = core::log(format!("on_qry_instrument {:?} {:?}", instr, result));
             return;
         }
         log::trace!("on_qry_instrument {:?} {:?}", instr, result);
@@ -184,7 +185,7 @@ impl TradeSpi for TradeClient {
                     InstState::Unknown
                 });
             let ev = TradeEvent::InstrumentsResponse(instrument);
-            let _ = qbox_core::query_event(ev);
+            let _ = core::query_event(ev);
         }
     }
 }

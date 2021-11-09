@@ -1,5 +1,5 @@
-use crate::broker::{Depth, Exchange, InstState, Instrument, Level1, TradeKind};
-use crate::Parameter;
+use crate::broker::{Depth, Exchange, InstState, Instrument, Level1, Parameter, TradeKind};
+
 use anyhow::Result;
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;

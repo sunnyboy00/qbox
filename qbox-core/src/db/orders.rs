@@ -1,5 +1,5 @@
 use crate::broker::{Order, TradeEvent, Transaction};
-use crate::bus::{self, topics, Event};
+use crate::core::{self, *};
 use ahash::RandomState;
 use anyhow::Result;
 use dashmap::DashMap;
@@ -71,7 +71,7 @@ pub fn get_all_transaction_with_order_id(
 }
 
 pub(crate) fn init() -> Result<()> {
-    let _ = bus::subscribe(topics::TRADES_EVENT, process)?;
+    let _ = core::subscribe(topics::TRADES_EVENT, process)?;
     Ok(())
 }
 

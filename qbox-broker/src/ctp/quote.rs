@@ -4,7 +4,7 @@ use chrono::prelude::*;
 use crossbeam::channel::{self, Sender};
 use ctp_rs::{ffi::*, Configuration, FromCBuf, QuoteApi, QuoteSpi, Response};
 use qbox_core::broker::*;
-use qbox_core::Value;
+use qbox_core::core;
 use std::collections::HashMap;
 use std::ffi::CString;
 use std::ops::Deref;
@@ -121,15 +121,15 @@ impl QuoteSpi for QuoteClient {
 
     fn on_disconnected(&self, reason: i32) {
         log::trace!("on_disconnected");
-        let _ = qbox_core::log(format!("disconnected 0x{:#04x}", reason));
+        let _ = core::log(format!("disconnected 0x{:#04x}", reason));
     }
     fn on_heartbeat_warning(&self, timelapse: i32) {
         log::trace!("on_heartbeat_warning");
-        let _ = qbox_core::log(format!("heartbeat_warning {}", timelapse));
+        let _ = core::log(format!("heartbeat_warning {}", timelapse));
     }
     fn on_error(&self, result: &Response) {
         log::trace!("on_error {:?}", result);
-        let _ = qbox_core::log(format!("error {:?}", result));
+        let _ = core::log(format!("error {:?}", result));
     }
     fn on_login(&self, info: &CThostFtdcRspUserLoginField, result: &Response) {
         log::trace!("on_login {:?} {:?}", info, result);
@@ -310,6 +310,6 @@ impl QuoteSpi for QuoteClient {
                 .with_item("trading_date", Value::String(trading_date))
                 .with_item("action_date", Value::String(action_date)),
         );
-        let _ = qbox_core::quotes_event(ev);
+        let _ = core::quotes_event(ev);
     }
 }

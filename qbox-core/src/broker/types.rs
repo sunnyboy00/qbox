@@ -1,7 +1,7 @@
-use crate::{Item, Parameter, Value};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::ops::BitOr;
+use std::ops::{Deref, DerefMut};
 use ta::{Close, High, Low, Open, Volume};
 
 #[doc = "交易事件"]
@@ -909,4 +909,56 @@ pub struct TopOfOrderBook {
     pub exchange: Exchange,
     pub bids: Vec<Depth>,
     pub asks: Vec<Depth>,
+}
+
+pub type Item = String;
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub enum Value {
+    F32(f32),
+    F64(f64),
+    String(String),
+    I8(i8),
+    U8(u8),
+    I16(i16),
+    U16(u16),
+    I32(i32),
+    U32(u32),
+    I64(i64),
+    U64(u64),
+    ISize(isize),
+    USize(usize),
+    Char(char),
+    Bytes(Vec<u8>),
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+pub struct Parameter(HashMap<Item, Value>);
+
+impl Deref for Parameter {
+    type Target = HashMap<Item, Value>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for Parameter {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl Parameter {
+    pub fn new() -> Self {
+        Self(HashMap::new())
+    }
+
+    pub fn with_capacity(capacity: usize) -> Self {
+        Self(HashMap::with_capacity(capacity))
+    }
+
+    pub fn with<S: AsRef<str>>(mut self, key: S, val: Value) -> Self {
+        self.insert(key.as_ref().into(), val);
+        self
+    }
 }

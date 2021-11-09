@@ -1,6 +1,5 @@
 pub mod executor;
-use crate::broker::QuoteEvent;
-use crate::Parameter;
+use crate::broker::{QuoteEvent,Parameter};
 use anyhow::Result;
 use lazy_static::lazy_static;
 use parking_lot::Mutex;

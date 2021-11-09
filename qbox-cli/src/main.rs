@@ -7,7 +7,7 @@ use anyhow::Result;
 use flexi_logger::{FileSpec, Logger};
 use opt::Opt;
 use qbox_core::broker::*;
-use qbox_core::{topics, Event};
+use qbox_core::core::Event;
 use std::io::Write;
 use std::path::Path;
 use std::str::FromStr;

@@ -1,5 +1,5 @@
 use crate::broker::{Position, TradeEvent};
-use crate::bus::{self, topics, Event};
+use crate::core::{self, *};
 use anyhow::Result;
 use lazy_static::lazy_static;
 use parking_lot::RwLock;
@@ -58,7 +58,7 @@ pub fn find_position_with_prefixs(prefixs: &[&str]) -> Option<Vec<Position>> {
 }
 
 pub(crate) fn init() -> Result<()> {
-    let _ = bus::subscribe(topics::QUERY_EVENT, process)?;
+    let _ = core::subscribe(topics::QUERY_EVENT, process)?;
     Ok(())
 }
 
