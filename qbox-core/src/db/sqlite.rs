@@ -54,9 +54,11 @@ pub(crate) fn opendb() -> Result<Connection> {
     //         | OpenFlags::SQLITE_OPEN_SHARED_CACHE,
     // )?;
     let db = Connection::open_in_memory_with_flags(
-        OpenFlags::SQLITE_OPEN_CREATE
-            | OpenFlags::SQLITE_OPEN_READ_WRITE
-            | OpenFlags::SQLITE_OPEN_SHARED_CACHE,
+        OpenFlags::SQLITE_OPEN_READ_WRITE
+            | OpenFlags::SQLITE_OPEN_CREATE
+            | OpenFlags::SQLITE_OPEN_SHARED_CACHE
+            | OpenFlags::SQLITE_OPEN_NO_MUTEX
+            | OpenFlags::SQLITE_OPEN_URI,
     )?;
     Ok(db)
 }
@@ -72,7 +74,8 @@ pub fn opendb_read_only() -> Result<Connection> {
     let db = Connection::open_in_memory_with_flags(
         OpenFlags::SQLITE_OPEN_READ_ONLY
             | OpenFlags::SQLITE_OPEN_NO_MUTEX
-            | OpenFlags::SQLITE_OPEN_SHARED_CACHE,
+            | OpenFlags::SQLITE_OPEN_SHARED_CACHE
+            | OpenFlags::SQLITE_OPEN_URI,
     )?;
     Ok(db)
 }
