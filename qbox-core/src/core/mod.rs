@@ -1,4 +1,8 @@
+pub mod assets;
 pub mod events;
+pub mod orders;
+pub mod positions;
+pub mod quotes;
 pub mod topics;
 
 pub use events::*;
@@ -11,8 +15,8 @@ pub fn startup() -> Result<()> {
     log::debug!("qbox events startup");
     broadcast(Event::Startup)?;
     log::debug!("qbox database startup");
-    //启动数据库
-    crate::db::startup()?;
+    // //启动数据库
+    // crate::db::startup()?;
     Ok(())
 }
 

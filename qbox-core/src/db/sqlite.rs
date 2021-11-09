@@ -1,5 +1,6 @@
 use crate::broker::{Depth, Exchange, InstState, Instrument, Level1, Parameter, TradeKind};
 
+use super::{Bucket, Database, FilterFlags, GetBatch, PutBatch, RemoveBatch};
 use anyhow::Result;
 use once_cell::sync::OnceCell;
 use parking_lot::Mutex;
@@ -10,6 +11,75 @@ use std::sync::Arc;
 const DB_NAME: &str = "qbox.db";
 const SCHEMA: &str = include_str!("schema.sql");
 
+pub struct Sqlite {
+    defbucket: &'static str,
+    buckets: Vec<String>,
+    inner: Connection,
+}
+
+impl Sqlite {
+    pub fn open<P: AsRef<Path>>(path: P) -> Result<Sqlite> {
+        unimplemented!()
+    }
+    pub fn open_memory<S: AsRef<str>>(name: S) -> Result<Sqlite> {
+        unimplemented!()
+    }
+}
+
+impl Database for Sqlite {
+    fn new_bucket<S: AsRef<str>, B: Bucket>(&self, name: S) -> Result<B> {
+        unimplemented!()
+    }
+    fn remove_bucket<S: AsRef<str>, B: Bucket>(&self, name: S) -> Result<B> {
+        unimplemented!()
+    }
+}
+
+impl Bucket for Sqlite {
+    fn name(&self) -> &str {
+        ""
+    }
+    fn put<K, V>(&self, key: K, val: V) -> Result<()> {
+        unimplemented!()
+    }
+    fn get<K, V>(&self, key: K) -> Result<Option<&V>> {
+        unimplemented!()
+    }
+    fn remove<K, V>(&self, key: K) -> Result<Option<&V>> {
+        unimplemented!()
+    }
+
+    fn find_prefix<K, V>(&self, prefix: K) -> Result<Option<Vec<&V>>> {
+        unimplemented!()
+    }
+    fn remove_prefix<K, V>(&self, prefix: K) -> Result<Option<Vec<&V>>> {
+        unimplemented!()
+    }
+    fn find_prefix_with_filter<K, V>(
+        &self,
+        prefix: K,
+        filter: impl Fn(&V) -> FilterFlags,
+    ) -> Result<Option<Vec<&V>>> {
+        unimplemented!()
+    }
+    fn remove_prefix_with_filter<K, V>(
+        &self,
+        prefix: K,
+        filter: impl Fn(&V) -> FilterFlags,
+    ) -> Result<Option<Vec<&V>>> {
+        unimplemented!()
+    }
+
+    fn batch_put<K, V>(&self, batch: PutBatch<K, V>) -> Result<()> {
+        unimplemented!()
+    }
+    fn batch_get<K, V>(&self, batch: GetBatch<K>) -> Result<Option<Vec<&V>>> {
+        unimplemented!()
+    }
+    fn batch_remove<K, V>(&self, batch: RemoveBatch<K>) -> Result<Option<Vec<&V>>> {
+        unimplemented!()
+    }
+}
 pub(crate) fn init() -> Result<()> {
     init_table()?;
     Ok(())

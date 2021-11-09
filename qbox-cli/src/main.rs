@@ -28,7 +28,8 @@ fn main() -> Result<()> {
         )
         .start()?;
 
-    qbox_core::startup()?;
+    qbox_core::core::startup()?;
+
     qbox_broker::load_driver()?;
 
     let quoter = quoter::spawn(Url::parse(opt.quote_dsn.as_str())?)?;
