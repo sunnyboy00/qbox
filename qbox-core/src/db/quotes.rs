@@ -8,7 +8,6 @@ use anyhow::Result;
 use crossbeam::channel::{self, Receiver};
 use dashmap::DashMap;
 use lazy_static::lazy_static;
-use rusqlite::Connection;
 use std::sync::Arc;
 
 const MAX_BAR_SIZE: usize = 1000;
@@ -64,29 +63,13 @@ pub fn get_level1(security_id: &String) -> Option<Level1> {
 
 pub fn get_all_level1() -> Option<Vec<Level1>> {
     log::trace!("get_all_level1",);
-    match sqlite::opendb_read_only() {
-        Ok(db) => match sqlite::find_all_level1(&db) {
-            Ok(data) => {
-                let _ = db.close();
-                return Some(data);
-            }
-            Err(err) => {
-                let _ = db.close();
-                log::error!("{}", err);
-            }
-        },
-        Err(err) => {
-            log::error!("{}", err);
-        }
+
+    let data: Vec<Level1> = LEVEL1S.iter().map(|item| item.value().clone()).collect();
+    if data.len() > 0 {
+        Some(data)
+    } else {
+        None
     }
-    None
-    // let data: Vec<Level1> = LEVEL1S.iter().map(|item| item.value().clone()).collect();
-    // if data.len() > 0 {
-    //     //data.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
-    //     Some(data)
-    // } else {
-    //     None
-    // }
 }
 
 pub fn find_level1_with_prefix(prefix: &str) -> Option<Vec<Level1>> {
@@ -96,7 +79,6 @@ pub fn find_level1_with_prefix(prefix: &str) -> Option<Vec<Level1>> {
         .map(|item| item.value().clone())
         .collect();
     if data.len() > 0 {
-        // data.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
         Some(data)
     } else {
         None
@@ -110,7 +92,6 @@ pub fn find_level1_with_prefixs(prefixs: &[&str]) -> Option<Vec<Level1>> {
         .collect();
     if data.len() > 0 {
         let data = data.concat();
-        // data.sort_by(|a, b| a.score.partial_cmp(&b.score).unwrap());
         Some(data)
     } else {
         None
@@ -226,7 +207,7 @@ pub(crate) fn init() -> Result<()> {
             },
             _ => {}
         }
-        tx1.send(ev).ok();
+        // tx1.send(ev).ok();
     })?;
     let _ = bus::subscribe(topics::QUERY_EVENT, move |_, ev| {
         match ev.as_ref() {
@@ -252,17 +233,17 @@ fn quote_worker(rx: Receiver<Arc<Event>>) -> Result<()> {
                 Ok(ev) => {
                     log::trace!("process {:?}", ev);
                     match ev.as_ref() {
-                        Event::Quote(quote) => match quote {
-                            QuoteEvent::Level1(level1) => {
-                                if let Err(err) = sqlite::update_level1(&db, level1) {
-                                    log::error!("sqlite error {:?}", err);
-                                }
-                            }
-                            QuoteEvent::Bar(bar) => {}
-                            QuoteEvent::Level2(level2) => {}
-                            QuoteEvent::TickToOffer(tto) => {}
-                            QuoteEvent::TickToTrade(ttt) => {}
-                        },
+                        // Event::Quote(quote) => match quote {
+                        //     QuoteEvent::Level1(level1) => {
+                        //         // if let Err(err) = sqlite::update_level1(&db, level1) {
+                        //         //     log::error!("sqlite error {:?}", err);
+                        //         // }
+                        //     }
+                        //     QuoteEvent::Bar(bar) => {}
+                        //     QuoteEvent::Level2(level2) => {}
+                        //     QuoteEvent::TickToOffer(tto) => {}
+                        //     QuoteEvent::TickToTrade(ttt) => {}
+                        // },
                         Event::Trade(TradeEvent::InstrumentsResponse(instr)) => {
                             if let Err(err) = sqlite::insert_instrument(&db, instr) {
                                 log::error!("sqlite error {:?}", err);

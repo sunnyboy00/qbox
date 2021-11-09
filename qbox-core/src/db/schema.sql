@@ -1,5 +1,5 @@
 BEGIN;
-PRAGMA cache_size = 100000;
+PRAGMA cache_size = 10000;
 PRAGMA temp_store = MEMORY;
 CREATE TABLE IF NOT EXISTS qbox (
     unit TEXT NOT NULL,
@@ -63,35 +63,35 @@ CREATE TABLE IF NOT EXISTS instruments (
     updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS quote_level1 (
-    security_id TEXT PRIMARY KEY,
-    exchange TEXT,
-    time INTEGER NOT NULL,
-    avg REAL,
-    open REAL,
-    high REAL,
-    low REAL,
-    close REAL,
-    last REAL,
-    last_volume REAL,
-    asks TEXT,
-    bids TEXT,
-    volume REAL,
-    turnover REAL,
-    items TEXT,
-    created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+-- CREATE TABLE IF NOT EXISTS quote_level1 (
+--     security_id TEXT PRIMARY KEY,
+--     exchange TEXT,
+--     time INTEGER NOT NULL,
+--     avg REAL,
+--     open REAL,
+--     high REAL,
+--     low REAL,
+--     close REAL,
+--     last REAL,
+--     last_volume REAL,
+--     asks TEXT,
+--     bids TEXT,
+--     volume REAL,
+--     turnover REAL,
+--     items TEXT,
+--     created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
+--     updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
+-- );
 
-CREATE TABLE IF NOT EXISTS quote_level2 (
-    security_id TEXT PRIMARY KEY,
-    exchange TEXT,
-    time INTEGER NOT NULL,
-    asks TEXT NOT NULL,
-    bids TEXT NOT NULL,
-    created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
+-- CREATE TABLE IF NOT EXISTS quote_level2 (
+--     security_id TEXT PRIMARY KEY,
+--     exchange TEXT,
+--     time INTEGER NOT NULL,
+--     asks TEXT NOT NULL,
+--     bids TEXT NOT NULL,
+--     created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
+--     updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
+-- );
 
 CREATE TABLE IF NOT EXISTS orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
