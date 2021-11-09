@@ -1,5 +1,6 @@
 BEGIN;
-
+PRAGMA cache_size = 100000;
+PRAGMA temp_store = MEMORY;
 CREATE TABLE IF NOT EXISTS qbox (
     unit TEXT NOT NULL,
     key TEXT NOT NULL,

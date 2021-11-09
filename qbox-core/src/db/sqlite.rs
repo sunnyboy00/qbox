@@ -46,9 +46,14 @@ pub(crate) fn create_bar_table(db: &Connection, name: &str) -> Result<()> {
 }
 
 pub(crate) fn opendb() -> Result<Connection> {
-    let db_path = Path::new(crate::data_path().as_str()).join(DB_NAME);
-    let db = Connection::open_with_flags(
-        db_path,
+    // let db_path = Path::new(crate::data_path().as_str()).join(DB_NAME);
+    // let db = Connection::open_with_flags(
+    //     db_path,
+    //     OpenFlags::SQLITE_OPEN_CREATE
+    //         | OpenFlags::SQLITE_OPEN_READ_WRITE
+    //         | OpenFlags::SQLITE_OPEN_SHARED_CACHE,
+    // )?;
+    let db = Connection::open_in_memory_with_flags(
         OpenFlags::SQLITE_OPEN_CREATE
             | OpenFlags::SQLITE_OPEN_READ_WRITE
             | OpenFlags::SQLITE_OPEN_SHARED_CACHE,
@@ -57,9 +62,14 @@ pub(crate) fn opendb() -> Result<Connection> {
 }
 
 pub fn opendb_read_only() -> Result<Connection> {
-    let db_path = Path::new(crate::data_path().as_str()).join(DB_NAME);
-    let db = Connection::open_with_flags(
-        db_path,
+    // let db_path = Path::new(crate::data_path().as_str()).join(DB_NAME);
+    // let db = Connection::open_with_flags(
+    //     db_path,
+    //     OpenFlags::SQLITE_OPEN_READ_ONLY
+    //         | OpenFlags::SQLITE_OPEN_NO_MUTEX
+    //         | OpenFlags::SQLITE_OPEN_SHARED_CACHE,
+    // )?;
+    let db = Connection::open_in_memory_with_flags(
         OpenFlags::SQLITE_OPEN_READ_ONLY
             | OpenFlags::SQLITE_OPEN_NO_MUTEX
             | OpenFlags::SQLITE_OPEN_SHARED_CACHE,
