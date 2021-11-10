@@ -144,7 +144,7 @@ pub(crate) fn init() -> Result<()> {
     let (tx, rx) = channel::bounded(8192);
     let tx1 = tx.clone();
     let tx2 = tx.clone();
-    quote_worker(rx)?;
+    //quote_worker(rx)?;
     let _ = core::subscribe(topics::QUOTES_EVENT, move |_, ev| {
         match ev.as_ref() {
             Event::Quote(quote) => match quote {
@@ -221,31 +221,31 @@ pub(crate) fn init() -> Result<()> {
     Ok(())
 }
 
-fn quote_worker(rx: Receiver<Arc<Event>>) -> Result<()> {
-    let db = sqlite::opendb()?;
-    sqlite::find_all_instruments(&db)?.iter().for_each(|instr| {
-        INSTRUMENTS.insert(instr.security_id.clone(), instr.clone());
-    });
-    std::thread::Builder::new()
-        .name("qbox-quote-worker".into())
-        .spawn(move || loop {
-            match rx.recv() {
-                Ok(ev) => {
-                    log::trace!("process {:?}", ev);
-                    match ev.as_ref() {
-                        Event::Trade(TradeEvent::InstrumentsResponse(instr)) => {
-                            if let Err(err) = sqlite::insert_instrument(&db, instr) {
-                                log::error!("sqlite error {:?}", err);
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-                Err(err) => {
-                    log::error!("!!!!!!!!!! {:?}", err);
-                }
-            }
-        })
-        .ok();
-    Ok(())
-}
+// fn quote_worker(rx: Receiver<Arc<Event>>) -> Result<()> {
+//     let db = sqlite::opendb()?;
+//     sqlite::find_all_instruments(&db)?.iter().for_each(|instr| {
+//         INSTRUMENTS.insert(instr.security_id.clone(), instr.clone());
+//     });
+//     std::thread::Builder::new()
+//         .name("qbox-quote-worker".into())
+//         .spawn(move || loop {
+//             match rx.recv() {
+//                 Ok(ev) => {
+//                     log::trace!("process {:?}", ev);
+//                     match ev.as_ref() {
+//                         Event::Trade(TradeEvent::InstrumentsResponse(instr)) => {
+//                             if let Err(err) = sqlite::insert_instrument(&db, instr) {
+//                                 log::error!("sqlite error {:?}", err);
+//                             }
+//                         }
+//                         _ => {}
+//                     }
+//                 }
+//                 Err(err) => {
+//                     log::error!("!!!!!!!!!! {:?}", err);
+//                 }
+//             }
+//         })
+//         .ok();
+//     Ok(())
+// }

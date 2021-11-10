@@ -1,6 +1,11 @@
+pub mod memory;
+pub mod rocksdb;
 pub mod sqlite;
 
 use anyhow::Result;
+use std::ops::Deref;
+use std::ops::DerefMut;
+use zerocopy::{AsBytes, FromBytes};
 
 pub enum FilterFlags {
     Next,
@@ -17,6 +22,19 @@ pub struct Batch<K, V>(Vec<(Op, K, V)>);
 pub type PutBatch<K, V> = Batch<K, V>;
 pub type GetBatch<K> = Batch<K, ()>;
 pub type RemoveBatch<K> = Batch<K, ()>;
+
+impl<K, V> Deref for Batch<K, V> {
+    type Target = Vec<(Op, K, V)>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl<K, V> DerefMut for Batch<K, V> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 impl<K, V> Batch<K, V> {
     pub fn new() -> Self {
@@ -62,106 +80,27 @@ impl<K> RemoveBatch<K> {
 }
 
 pub trait Database: Bucket {
-    fn new_bucket<S: AsRef<str>, B: Bucket>(&self, name: S) -> Result<B>;
-    fn remove_bucket<S: AsRef<str>, B: Bucket>(&self, name: S) -> Result<B>;
-    // fn chain<R: Database>(self, next: R) -> Chain<Self, R>
-    // where
-    //     Self: Sized,
-    // {
-    //     Chain {
-    //         first: self,
-    //         second: next,
-    //     }
-    // }
+    type Bucket: Bucket;
+    fn buckets(&self) -> Vec<String>;
+    fn bucket<S: Into<String>>(&self, name: S) -> Result<Self::Bucket>;
+    fn drop_bucket<S: AsRef<str>>(&self, name: S) -> Result<()>;
 }
 
-pub trait Bucket {
+pub trait Bucket: Send + Sync {
     fn name(&self) -> &str;
-    fn put<K, V>(&self, key: K, val: V) -> Result<()>;
-    fn get<K, V>(&self, key: K) -> Result<Option<&V>>;
-    fn remove<K, V>(&self, key: K) -> Result<Option<&V>>;
-
-    fn find_prefix<K, V>(&self, prefix: K) -> Result<Option<Vec<&V>>>;
-    fn remove_prefix<K, V>(&self, prefix: K) -> Result<Option<Vec<&V>>>;
-    fn find_prefix_with_filter<K, V>(
+    fn put<K: Into<String>, V: AsRef<[u8]>>(&self, key: K, val: V) -> Result<()>;
+    fn get<K: AsRef<str>>(&self, key: K) -> Result<Option<Vec<u8>>>;
+    fn remove<K: AsRef<str>>(&self, key: K) -> Result<()>;
+    fn remove_prefix<K: AsRef<str>>(&self, prefix: K) -> Result<()>;
+    fn find_prefix<K: AsRef<str>>(&self, prefix: K) -> Result<Option<Vec<Vec<u8>>>>;
+    fn find_prefix_with_filter<K: AsRef<str>>(
         &self,
         prefix: K,
-        filter: impl Fn(&V) -> FilterFlags,
-    ) -> Result<Option<Vec<&V>>>;
-    fn remove_prefix_with_filter<K, V>(
-        &self,
-        prefix: K,
-        filter: impl Fn(&V) -> FilterFlags,
-    ) -> Result<Option<Vec<&V>>>;
+        filter: impl Fn(&[u8]) -> FilterFlags,
+    ) -> Result<Option<Vec<Vec<u8>>>>;
 
-    fn batch_put<K, V>(&self, batch: PutBatch<K, V>) -> Result<()>;
-    fn batch_get<K, V>(&self, batch: GetBatch<K>) -> Result<Option<Vec<&V>>>;
-    fn batch_remove<K, V>(&self, batch: RemoveBatch<K>) -> Result<Option<Vec<&V>>>;
+    fn batch_put<K: Into<String>, V: AsRef<[u8]>>(&self, batch: PutBatch<K, V>) -> Result<()>;
+    fn batch_get<K: AsRef<str>>(&self, batch: GetBatch<K>) -> Result<Option<Vec<Vec<u8>>>>;
+    fn batch_remove<K: AsRef<str>>(&self, batch: RemoveBatch<K>) -> Result<()>;
+    fn count(&self) -> Result<usize>;
 }
-
-// #[derive(Default, Clone)]
-// pub struct Chain<W, U> {
-//     first: W,
-//     second: U,
-// }
-
-// impl<W, U> Chain<W, U> {
-//     pub fn into_inner(self) -> (W, U) {
-//         (self.first, self.second)
-//     }
-
-//     pub fn get_ref(&self) -> (&W, &U) {
-//         (&self.first, &self.second)
-//     }
-//     pub fn get_mut(&mut self) -> (&mut W, &mut U) {
-//         (&mut self.first, &mut self.second)
-//     }
-// }
-
-// impl<W: Database, U: Database> Database for Chain<W, U> {
-//     fn put<K, V>(&self, key: K, val: V) -> Result<()> {
-//         self.second.put(key, val)?;
-//         self.first.put(key, val)?;
-//         Ok(())
-//     }
-//     fn get<K, V>(&self, key: K) -> Result<Option<&V>> {
-//         if let Ok(some) = self.first.get(key) {
-//             return Ok(some);
-//         }
-//         self.second.get(key)
-//     }
-//     fn remove<K, V>(&self, key: K) -> Result<Option<&V>> {
-//         unimplemented!()
-//     }
-
-//     fn find_prefix<K, V>(&self, prefix: K) -> Result<Option<Vec<&V>>> {
-//         unimplemented!()
-//     }
-//     fn remove_prefix<K, V>(&self, prefix: K) -> Result<Option<Vec<&V>>> {
-//         unimplemented!()
-//     }
-//     fn find_prefix_with_filter<K, V>(
-//         &self,
-//         prefix: K,
-//         filter: impl Fn(&V) -> FilterFlags,
-//     ) -> Result<Option<Vec<&V>>> {
-//         unimplemented!()
-//     }
-//     fn remove_prefix_with_filter<K, V>(
-//         &self,
-//         prefix: K,
-//         filter: impl Fn(&V) -> FilterFlags,
-//     ) -> Result<Option<Vec<&V>>> {
-//         unimplemented!()
-//     }
-
-//     fn batch_put<K, V>(&self, batch: PutBatch<K, V>) -> Result<()> {
-//         unimplemented!()
-//     }
-//     fn batch_get<K, V>(&self, batch: GetBatch<K>) -> Result<Option<Vec<&V>>> {
-//         unimplemented!()
-//     }
-//     fn batch_remove<K, V>(&self, batch: RemoveBatch<K>) -> Result<Option<Vec<&V>>> {
-//         unimplemented!()
-//     }
-// }

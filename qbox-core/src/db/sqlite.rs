@@ -1,354 +1,245 @@
-use crate::broker::{Depth, Exchange, InstState, Instrument, Level1, Parameter, TradeKind};
-
 use super::{Bucket, Database, FilterFlags, GetBatch, PutBatch, RemoveBatch};
 use anyhow::Result;
+use dashmap::DashSet;
 use once_cell::sync::OnceCell;
-use parking_lot::Mutex;
 use rusqlite::{params, Connection, OpenFlags};
 use std::path::Path;
 use std::sync::Arc;
 
-const DB_NAME: &str = "qbox.db";
-const SCHEMA: &str = include_str!("schema.sql");
-
+#[derive(Clone)]
 pub struct Sqlite {
-    defbucket: &'static str,
-    buckets: Vec<String>,
-    inner: Connection,
+    bucket_name: String,
+    buckets: DashSet<String>,
+    inner: Arc<Connection>,
 }
+
+unsafe impl Send for Sqlite {}
+unsafe impl Sync for Sqlite {}
 
 impl Sqlite {
     pub fn open<P: AsRef<Path>>(path: P) -> Result<Sqlite> {
-        unimplemented!()
+        static INSTANCE: OnceCell<Sqlite> = OnceCell::new();
+        let ret = INSTANCE
+            .get_or_init(|| {
+                let conn = Arc::new(
+                    Connection::open_with_flags(
+                        path,
+                        OpenFlags::SQLITE_OPEN_CREATE
+                            | OpenFlags::SQLITE_OPEN_READ_WRITE
+                            | OpenFlags::SQLITE_OPEN_NO_MUTEX
+                            | OpenFlags::SQLITE_OPEN_SHARED_CACHE
+                            | OpenFlags::SQLITE_OPEN_URI,
+                    )
+                    .unwrap(),
+                );
+                Self {
+                    bucket_name: "defbucket".into(),
+                    buckets: tables(&conn).unwrap(),
+                    inner: conn,
+                }
+            })
+            .clone();
+        Ok(ret)
     }
-    pub fn open_memory<S: AsRef<str>>(name: S) -> Result<Sqlite> {
-        unimplemented!()
+    pub fn open_memory() -> Result<Sqlite> {
+        static INSTANCE: OnceCell<Sqlite> = OnceCell::new();
+        let ret = INSTANCE
+            .get_or_init(|| {
+                let conn = Arc::new(
+                    Connection::open_in_memory_with_flags(
+                        OpenFlags::SQLITE_OPEN_READ_WRITE
+                            | OpenFlags::SQLITE_OPEN_CREATE
+                            | OpenFlags::SQLITE_OPEN_SHARED_CACHE
+                            | OpenFlags::SQLITE_OPEN_NO_MUTEX
+                            | OpenFlags::SQLITE_OPEN_URI,
+                    )
+                    .unwrap(),
+                );
+                Self {
+                    bucket_name: "defbucket".into(),
+                    buckets: DashSet::new(),
+                    inner: conn,
+                }
+            })
+            .clone();
+        Ok(ret)
     }
 }
 
 impl Database for Sqlite {
-    fn new_bucket<S: AsRef<str>, B: Bucket>(&self, name: S) -> Result<B> {
-        unimplemented!()
+    type Bucket = Sqlite;
+    fn buckets(&self) -> Vec<String> {
+        let vec: Vec<String> = self.buckets.iter().map(|v| v.clone()).collect();
+        vec
     }
-    fn remove_bucket<S: AsRef<str>, B: Bucket>(&self, name: S) -> Result<B> {
-        unimplemented!()
+    fn bucket<S: Into<String>>(&self, name: S) -> Result<Sqlite> {
+        let name = name.into();
+        if self.buckets.contains(&name) {
+            Ok(Sqlite {
+                bucket_name: name.into(),
+                buckets: self.buckets.clone(),
+                inner: self.inner.clone(),
+            })
+        } else {
+            const SQL: &str = "CREATE TABLE IF NOT EXISTS ? (
+                key TEXT NOT NULL PRIMARY KEY,
+                value BLOB,
+                created_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
+            );";
+            self.inner.execute(SQL, params![&name])?;
+            self.buckets.insert(name.clone());
+            Ok(Sqlite {
+                bucket_name: name,
+                buckets: self.buckets.clone(),
+                inner: self.inner.clone(),
+            })
+        }
+    }
+    fn drop_bucket<S: AsRef<str>>(&self, name: S) -> Result<()> {
+        const SQL: &str = "DROP TABLE ?;";
+        self.inner.execute(SQL, params![name.as_ref()])?;
+        self.buckets.remove(name.as_ref());
+        Ok(())
     }
 }
 
 impl Bucket for Sqlite {
     fn name(&self) -> &str {
-        ""
+        self.bucket_name.as_str()
     }
-    fn put<K, V>(&self, key: K, val: V) -> Result<()> {
-        unimplemented!()
-    }
-    fn get<K, V>(&self, key: K) -> Result<Option<&V>> {
-        unimplemented!()
-    }
-    fn remove<K, V>(&self, key: K) -> Result<Option<&V>> {
-        unimplemented!()
-    }
-
-    fn find_prefix<K, V>(&self, prefix: K) -> Result<Option<Vec<&V>>> {
-        unimplemented!()
-    }
-    fn remove_prefix<K, V>(&self, prefix: K) -> Result<Option<Vec<&V>>> {
-        unimplemented!()
-    }
-    fn find_prefix_with_filter<K, V>(
-        &self,
-        prefix: K,
-        filter: impl Fn(&V) -> FilterFlags,
-    ) -> Result<Option<Vec<&V>>> {
-        unimplemented!()
-    }
-    fn remove_prefix_with_filter<K, V>(
-        &self,
-        prefix: K,
-        filter: impl Fn(&V) -> FilterFlags,
-    ) -> Result<Option<Vec<&V>>> {
-        unimplemented!()
+    fn put<K: Into<String>, V: AsRef<[u8]>>(&self, key: K, val: V) -> Result<()> {
+        let key = key.into();
+        let val = val.as_ref();
+        const SQL_INSERT: &str = r#"INSERT INTO ? (key,value) VALUES (?,?);"#;
+        const SQL_UPDATE: &str =
+            r#"UPDATE ? SET value=?, updated_at=CURRENT_TIMESTAMP WHERE key=?;"#;
+        let len = self
+            .inner
+            .as_ref()
+            .execute(SQL_UPDATE, params![self.bucket_name, val, &key])?;
+        if len == 0 {
+            self.inner
+                .as_ref()
+                .execute(SQL_INSERT, params![self.bucket_name, &key, val])?;
+        }
+        Ok(())
     }
 
-    fn batch_put<K, V>(&self, batch: PutBatch<K, V>) -> Result<()> {
-        unimplemented!()
-    }
-    fn batch_get<K, V>(&self, batch: GetBatch<K>) -> Result<Option<Vec<&V>>> {
-        unimplemented!()
-    }
-    fn batch_remove<K, V>(&self, batch: RemoveBatch<K>) -> Result<Option<Vec<&V>>> {
-        unimplemented!()
-    }
-}
-pub(crate) fn init() -> Result<()> {
-    init_table()?;
-    Ok(())
-}
-
-fn init_table() -> Result<()> {
-    let db = opendb()?;
-    db.execute_batch(SCHEMA)?;
-    // let _ = db.close();
-    Ok(())
-}
-
-pub(crate) fn create_bar_table(db: &Connection, name: &str) -> Result<()> {
-    db.execute_batch(
-        format!(
-            "
-        BEGIN;
-        CREATE TABLE IF NOT EXISTS quote_bar_{} (
-            security_id TEXT PRIMARY KEY,
-            time INTEGER NOT NULL,
-            avg REAL,
-            open REAL,
-            high REAL,
-            low REAL,
-            close REAL,
-            last REAL,
-            volume REAL,
-            turnover REAL
-        );
-        COMMIT;
-    ",
-            name
-        )
-        .as_str(),
-    )?;
-    Ok(())
-}
-
-pub(crate) fn opendb() -> Result<Connection> {
-    let db_path = Path::new(crate::data_path().as_str()).join(DB_NAME);
-    let db = Connection::open_with_flags(
-        db_path,
-        OpenFlags::SQLITE_OPEN_CREATE
-            | OpenFlags::SQLITE_OPEN_READ_WRITE
-            | OpenFlags::SQLITE_OPEN_NO_MUTEX
-            | OpenFlags::SQLITE_OPEN_SHARED_CACHE
-            | OpenFlags::SQLITE_OPEN_URI,
-    )?;
-
-    Ok(db)
-}
-
-pub fn opendb_read_only() -> Result<Connection> {
-    let db_path = Path::new(crate::data_path().as_str()).join(DB_NAME);
-    let db = Connection::open_with_flags(
-        db_path,
-        OpenFlags::SQLITE_OPEN_READ_ONLY
-            | OpenFlags::SQLITE_OPEN_NO_MUTEX
-            | OpenFlags::SQLITE_OPEN_SHARED_CACHE
-            | OpenFlags::SQLITE_OPEN_URI,
-    )?;
-
-    Ok(db)
-}
-
-pub fn insert_instrument(db: &Connection, instr: &Instrument) -> Result<()> {
-    const SQL: &str = r#"INSERT OR REPLACE INTO instruments (security_id,exchange,symbol,kind,base_currency,quote_currency,multiplier,state,items,updated_at) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,CURRENT_TIMESTAMP);"#;
-    let exchange: &str = instr.exchange.into();
-    let kind: &str = instr.kind.into();
-    let state = format!("{:?}", instr.state);
-    let items = ron::to_string(&instr.items)?;
-    db.execute(
-        SQL,
-        params![
-            instr.security_id,
-            exchange,
-            instr.symbol,
-            kind,
-            instr.base_currency,
-            instr.quote_currency,
-            instr.multiplier,
-            state,
-            items
-        ],
-    )?;
-    Ok(())
-}
-
-pub fn find_all_instruments(db: &Connection) -> Result<Vec<Instrument>> {
-    let mut ret = vec![];
-    const SQL:&str = "SELECT security_id,exchange,symbol,kind,base_currency,quote_currency,multiplier,state,items FROM instruments;";
-    {
-        let mut stat = db.prepare(SQL)?;
-        let list = stat.query_map([], |row| {
-            let items: String = row.get(8)?;
-            let exchange: String = row.get(1)?;
-            let kind: String = row.get(3)?;
-            let state: String = row.get(7)?;
-            let items: Parameter = if let Ok(items) = ron::from_str::<Parameter>(&items) {
-                items
-            } else {
-                Parameter::new()
-            };
-            Ok(Instrument {
-                security_id: row.get(0)?,
-                exchange: Exchange::from(&exchange),
-                symbol: row.get(2)?,
-                kind: TradeKind::from(kind.as_str()),
-                base_currency: row.get(4)?,
-                quote_currency: row.get(5)?,
-                multiplier: row.get(6)?,
-                state: InstState::from(state.as_str()),
-                items,
-            })
+    fn get<K: AsRef<str>>(&self, key: K) -> Result<Option<Vec<u8>>> {
+        const SQL: &str = "SELECT value FROM ? WHERE key=? LIMIT 1;";
+        let mut stat = self.inner.as_ref().prepare(SQL)?;
+        let mut list = stat.query_map(params![self.bucket_name, key.as_ref()], |row| {
+            let val: Vec<u8> = row.get(0)?;
+            Ok(val)
         })?;
+
+        if let Some(val) = list.next() {
+            let val = val?;
+            return Ok(Some(val));
+        }
+        Ok(None)
+    }
+    fn remove<K: AsRef<str>>(&self, key: K) -> Result<()> {
+        const SQL: &str = r#"DELETE FROM ? WHERE key=?;"#;
+        self.inner
+            .as_ref()
+            .execute(SQL, params![self.bucket_name, key.as_ref()])?;
+        Ok(())
+    }
+
+    fn find_prefix<K: AsRef<str>>(&self, prefix: K) -> Result<Option<Vec<Vec<u8>>>> {
+        let prefix = format!("{}*", prefix.as_ref());
+        const SQL: &str = "SELECT value FROM ? WHERE key GLOB ?;";
+        let mut stat = self.inner.as_ref().prepare(SQL)?;
+        let list = stat.query_map(params![self.bucket_name, &prefix], |row| {
+            let val: Vec<u8> = row.get(0)?;
+            Ok(val)
+        })?;
+
+        let mut ret = vec![];
         for instr in list {
             ret.push(instr?);
+        }
+        if ret.len() > 0 {
+            Ok(Some(ret))
+        } else {
+            Ok(None)
+        }
+    }
+    fn remove_prefix<K: AsRef<str>>(&self, prefix: K) -> Result<()> {
+        let prefix = format!("{}*", prefix.as_ref());
+        const SQL: &str = "DELETE FROM ? WHERE key GLOB ?;";
+        self.inner
+            .as_ref()
+            .execute(SQL, params![self.bucket_name, &prefix])?;
+        Ok(())
+    }
+    fn find_prefix_with_filter<K: AsRef<str>>(
+        &self,
+        prefix: K,
+        filter: impl Fn(&[u8]) -> FilterFlags,
+    ) -> Result<Option<Vec<Vec<u8>>>> {
+        let prefix = format!("{}*", prefix.as_ref());
+        const SQL: &str = "SELECT value FROM ? WHERE key GLOB ?;";
+        let mut stat = self.inner.as_ref().prepare(SQL)?;
+        let list = stat.query_map(params![self.bucket_name, &prefix], |row| {
+            let val: Vec<u8> = row.get(0)?;
+            Ok(val)
+        })?;
+
+        let mut ret = vec![];
+        for val in list {
+            let val = val?;
+            match filter(&val) {
+                FilterFlags::Next => {
+                    ret.push(val);
+                }
+                FilterFlags::Break => break,
+                FilterFlags::Skip => {}
+            }
+        }
+        if ret.len() > 0 {
+            Ok(Some(ret))
+        } else {
+            Ok(None)
+        }
+    }
+
+    fn batch_put<K: Into<String>, V: AsRef<[u8]>>(&self, batch: PutBatch<K, V>) -> Result<()> {
+        unimplemented!()
+    }
+    fn batch_get<K: AsRef<str>>(&self, batch: GetBatch<K>) -> Result<Option<Vec<Vec<u8>>>> {
+        unimplemented!()
+    }
+    fn batch_remove<K: AsRef<str>>(&self, batch: RemoveBatch<K>) -> Result<()> {
+        unimplemented!()
+    }
+
+    fn count(&self) -> Result<usize> {
+        const SQL: &str = "SELECT count(*) FROM ?;";
+        let mut stat = self.inner.as_ref().prepare(SQL)?;
+        let mut list = stat.query_map(params![self.bucket_name], |row| {
+            let val: usize = row.get(0)?;
+            Ok(val)
+        })?;
+        Ok(list.next().unwrap()?)
+    }
+}
+
+fn tables<C: AsRef<Connection>>(db: C) -> Result<DashSet<String>> {
+    let ret = DashSet::new();
+    const SQL: &str =
+        "SELECT name FROM sqlite_schema WHERE type ='table' AND name NOT LIKE 'sqlite_%';";
+    {
+        let mut stat = db.as_ref().prepare(SQL)?;
+        let list = stat.query_map([], |row| {
+            let name: String = row.get(0)?;
+            Ok(name)
+        })?;
+        for instr in list {
+            ret.insert(instr?);
         }
     }
     Ok(ret)
 }
-
-// pub fn update_level1(db: &Connection, level1: &Level1) -> Result<()> {
-//     const SQL_INSERT: &str = r#"INSERT INTO quote_level1 (
-//         security_id,
-//         exchange,
-//         time,
-//         avg,
-//         open,
-//         high,
-//         low,
-//         close,
-//         last,
-//         last_volume,
-//         asks,
-//         bids,
-//         volume,
-//         turnover,
-//         items,
-//         updated_at
-//     ) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,CURRENT_TIMESTAMP);"#;
-//     const SQL_UPDATE: &str = r#"UPDATE quote_level1 SET
-//         time=?1,
-//         avg=?2,
-//         open=?3,
-//         high=?4,
-//         low=?5,
-//         close=?6,
-//         last=?7,
-//         last_volume=?8,
-//         asks=?9,
-//         bids=?10,
-//         volume=?11,
-//         turnover=?12,
-//         items=?13,
-//         updated_at=CURRENT_TIMESTAMP
-//     WHERE security_id=?14;"#;
-//     let exchange: &str = level1.exchange.into();
-//     let asks = ron::to_string(&level1.asks)?;
-//     let bids = ron::to_string(&level1.bids)?;
-//     let items = ron::to_string(&level1.items)?;
-//     let len = db.execute(
-//         SQL_UPDATE,
-//         params![
-//             level1.time,
-//             level1.average,
-//             level1.open,
-//             level1.high,
-//             level1.low,
-//             level1.close,
-//             level1.last,
-//             level1.last_volume,
-//             asks,
-//             bids,
-//             level1.volume,
-//             level1.turnover,
-//             items,
-//             level1.security_id,
-//         ],
-//     )?;
-//     if len == 0 {
-//         db.execute(
-//             SQL_INSERT,
-//             params![
-//                 level1.security_id,
-//                 exchange,
-//                 level1.time,
-//                 level1.average,
-//                 level1.open,
-//                 level1.high,
-//                 level1.low,
-//                 level1.close,
-//                 level1.last,
-//                 level1.last_volume,
-//                 asks,
-//                 bids,
-//                 level1.volume,
-//                 level1.turnover,
-//                 items,
-//             ],
-//         )?;
-//     }
-
-//     Ok(())
-// }
-
-// pub fn find_all_level1(db: &Connection) -> Result<Vec<Level1>> {
-//     let mut ret = vec![];
-//     const SQL: &str = "SELECT
-//         security_id,
-//         exchange,
-//         time,
-//         avg,
-//         open,
-//         high,
-//         low,
-//         close,
-//         last,
-//         last_volume,
-//         asks,
-//         bids,
-//         volume,
-//         turnover,
-//         items
-//     FROM
-//         quote_level1 order by updated_at desc;";
-//     {
-//         let mut stat = db.prepare(SQL)?;
-//         let list = stat.query_map([], |row| {
-//             let items: Parameter = if let Ok(items) =
-//                 ron::from_str::<Parameter>(&row.get::<_, String>(14).unwrap_or_default())
-//             {
-//                 items
-//             } else {
-//                 Parameter::new()
-//             };
-//             let asks =
-//                 if let Ok(asks) = ron::from_str(&row.get::<_, String>(10).unwrap_or_default()) {
-//                     asks
-//                 } else {
-//                     vec![]
-//                 };
-//             let bids =
-//                 if let Ok(bids) = ron::from_str(&row.get::<_, String>(11).unwrap_or_default()) {
-//                     bids
-//                 } else {
-//                     vec![]
-//                 };
-
-//             Ok(Level1::new()
-//                 .with_secrity_id(row.get::<_, String>(0)?)
-//                 .with_exchange(Exchange::from(&row.get::<_, String>(1)?))
-//                 .with_time(row.get(2)?)
-//                 .with_average(row.get(3).unwrap_or(f64::NAN))
-//                 .with_open(row.get(4).unwrap_or(f64::NAN))
-//                 .with_high(row.get(5).unwrap_or(f64::NAN))
-//                 .with_low(row.get(6).unwrap_or(f64::NAN))
-//                 .with_close(row.get(7).unwrap_or(f64::NAN))
-//                 .with_last(row.get(8).unwrap_or(f64::NAN))
-//                 .with_last_volume(row.get(9).unwrap_or(f64::NAN))
-//                 .with_asks(asks)
-//                 .with_bids(bids)
-//                 .with_items(items)
-//                 .with_volume(row.get(12).unwrap_or(f64::NAN))
-//                 .with_turnover(row.get(13).unwrap_or(f64::NAN)))
-//         })?;
-//         for instr in list {
-//             ret.push(instr?);
-//         }
-//     }
-//     Ok(ret)
-// }
