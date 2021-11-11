@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS brokers (
     updated_at INTEGER NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE IF NOT EXISTS unit_instruments (
+CREATE TABLE IF NOT EXISTS unit_symbols (
     unit TEXT NOT NULL,
     tag TEXT NOT NULL, 
     security_id TEXT NOT NULL,
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS unit_instruments (
     PRIMARY KEY (unit,tag,security_id)
 );
 
-CREATE TABLE IF NOT EXISTS instruments (
+CREATE TABLE IF NOT EXISTS symbols (
     security_id TEXT PRIMARY KEY,
     exchange TEXT,
     symbol TEXT,

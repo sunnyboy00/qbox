@@ -898,8 +898,6 @@ pub struct Level2 {
     pub time: i64, //时间
     pub bids: Vec<Depth>,
     pub asks: Vec<Depth>,
-    #[serde(skip)]
-    pub raw: Option<Vec<u8>>,
 }
 
 #[doc = "订单簿"]
@@ -961,4 +959,15 @@ impl Parameter {
         self.insert(key.as_ref().into(), val);
         self
     }
+}
+
+#[doc = "周期"]
+pub enum Period {
+    Timeline,
+    Second(u8),
+    Minute(u8),
+    Hour(u8),
+    Day(u8),
+    Month(u8),
+    Year(u8),
 }

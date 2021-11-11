@@ -2,105 +2,155 @@ pub mod memory;
 pub mod rocksdb;
 pub mod sqlite;
 
+use crate::broker::{
+    Bar, Instrument, Level1, Level2, Order, Period, Position, TickToOffer, TickToTrade, Transaction,
+};
 use anyhow::Result;
-use std::ops::Deref;
-use std::ops::DerefMut;
-use zerocopy::{AsBytes, FromBytes};
 
-pub enum FilterFlags {
-    Next,
-    Skip,
-    Break,
-}
-
-pub enum Op {
-    Put,
-    Get,
-    Remove,
-}
-pub struct Batch<K, V>(Vec<(Op, K, V)>);
-pub type PutBatch<K, V> = Batch<K, V>;
-pub type GetBatch<K> = Batch<K, ()>;
-pub type RemoveBatch<K> = Batch<K, ()>;
-
-impl<K, V> Deref for Batch<K, V> {
-    type Target = Vec<(Op, K, V)>;
-    fn deref(&self) -> &Self::Target {
-        &self.0
+pub trait QuoteStore {
+    fn insert_level1(&self, level1: Level1) -> Result<()> {
+        unimplemented!()
+    }
+    fn update_level1(&self, level1: Level1) -> Result<()> {
+        unimplemented!()
+    }
+    fn query_one_level1(&self, security_id: &str) -> Result<Option<Level1>> {
+        unimplemented!()
+    }
+    fn query_all_level1(&self) -> Result<Option<Vec<Level1>>> {
+        unimplemented!()
+    }
+    fn query_level1_with_prefix(&self, prefix: &str) -> Result<Option<Vec<Level1>>> {
+        unimplemented!()
+    }
+    fn query_level1_with_prefixs(&self, prefixs: &[&str]) -> Result<Option<Vec<Level1>>> {
+        unimplemented!()
+    }
+    fn insert_bar(&self, bar: Bar) -> Result<()> {
+        unimplemented!()
+    }
+    fn query_bar(&self, security_id: &str, period: Period) -> Result<Option<Vec<Bar>>> {
+        unimplemented!()
+    }
+    fn insert_tick2offer(&self, tto: TickToOffer) -> Result<()> {
+        unimplemented!()
+    }
+    fn query_tick2offer(&self, security_id: &str) -> Result<Option<Vec<TickToOffer>>> {
+        unimplemented!()
+    }
+    fn insert_tick2trade(&self, ttt: TickToTrade) -> Result<()> {
+        unimplemented!()
+    }
+    fn query_tick2trade(&self, security_id: &str) -> Result<Option<Vec<TickToTrade>>> {
+        unimplemented!()
+    }
+    fn update_depth(&self, level2: Level2) -> Result<()> {
+        unimplemented!()
+    }
+    fn query_depth(&self, security_id: &str) -> Result<Option<Level2>> {
+        unimplemented!()
     }
 }
 
-impl<K, V> DerefMut for Batch<K, V> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
+pub trait OrderStore {
+    fn insert_order(&self, order: Order) -> Result<()> {
+        unimplemented!()
     }
-}
-
-impl<K, V> Batch<K, V> {
-    pub fn new() -> Self {
-        Self(vec![])
+    fn update_order(&self, order: Order) -> Result<()> {
+        unimplemented!()
     }
-
-    pub fn with_op(mut self, op: Op, key: K, val: V) -> Self {
-        self.0.push((op, key, val));
-        self
+    fn remove_order(&self, order_id: u64) -> Result<()> {
+        unimplemented!()
     }
-
-    pub fn op(&mut self, op: Op, key: K, val: V) {
-        self.0.push((op, key, val));
+    fn query_one_order(&self, order_id: u64) -> Result<Option<Order>> {
+        unimplemented!()
     }
-}
-
-impl<K, V> PutBatch<K, V> {
-    pub fn with_put(mut self, key: K, val: V) -> Self {
-        self.with_op(Op::Put, key, val)
+    fn query_order(&self, security_id: &str) -> Result<Option<Vec<Order>>> {
+        unimplemented!()
     }
-    pub fn put(&mut self, key: K, val: V) {
-        self.op(Op::Put, key, val);
-    }
-}
-
-impl<K> GetBatch<K> {
-    pub fn get(&mut self, key: K) {
-        self.op(Op::Get, key, ());
+    fn query_all_order(&self) -> Result<Option<Vec<Order>>> {
+        unimplemented!()
     }
 
-    pub fn with_get(mut self, key: K) -> Self {
-        self.with_op(Op::Get, key, ())
+    fn insert_tx(&self, tx: Transaction) -> Result<()> {
+        unimplemented!()
     }
-}
-
-impl<K> RemoveBatch<K> {
-    pub fn remove(&mut self, key: K) {
-        self.op(Op::Remove, key, ());
+    fn update_tx(&self, tx: Transaction) -> Result<()> {
+        unimplemented!()
     }
-    pub fn with_remove(mut self, key: K) -> Self {
-        self.with_op(Op::Remove, key, ())
+    fn remove_tx(&self, txid: u64) -> Result<()> {
+        unimplemented!()
     }
-}
-
-pub trait Database: Bucket {
-    type Bucket: Bucket;
-    fn buckets(&self) -> Vec<String>;
-    fn bucket<S: Into<String>>(&self, name: S) -> Result<Self::Bucket>;
-    fn drop_bucket<S: AsRef<str>>(&self, name: S) -> Result<()>;
-}
-
-pub trait Bucket: Send + Sync {
-    fn name(&self) -> &str;
-    fn put<K: Into<String>, V: AsRef<[u8]>>(&self, key: K, val: V) -> Result<()>;
-    fn get<K: AsRef<str>>(&self, key: K) -> Result<Option<Vec<u8>>>;
-    fn remove<K: AsRef<str>>(&self, key: K) -> Result<()>;
-    fn remove_prefix<K: AsRef<str>>(&self, prefix: K) -> Result<()>;
-    fn find_prefix<K: AsRef<str>>(&self, prefix: K) -> Result<Option<Vec<Vec<u8>>>>;
-    fn find_prefix_with_filter<K: AsRef<str>>(
+    fn query_one_tx(&self, txid: u64) -> Result<Option<Transaction>> {
+        unimplemented!()
+    }
+    fn query_tx(&self, order_id: u64) -> Result<Option<Vec<Transaction>>> {
+        unimplemented!()
+    }
+    fn query_tx_with_symbol(&self, security_id: &str) -> Result<Option<Vec<Transaction>>> {
+        unimplemented!()
+    }
+    fn query_tx_with_symbol_and_order(
         &self,
-        prefix: K,
-        filter: impl Fn(&[u8]) -> FilterFlags,
-    ) -> Result<Option<Vec<Vec<u8>>>>;
+        security_id: &str,
+        order_id: u64,
+    ) -> Result<Option<Vec<Transaction>>> {
+        unimplemented!()
+    }
+    fn query_all_tx(&self) -> Result<Option<Vec<Transaction>>> {
+        unimplemented!()
+    }
 
-    fn batch_put<K: Into<String>, V: AsRef<[u8]>>(&self, batch: PutBatch<K, V>) -> Result<()>;
-    fn batch_get<K: AsRef<str>>(&self, batch: GetBatch<K>) -> Result<Option<Vec<Vec<u8>>>>;
-    fn batch_remove<K: AsRef<str>>(&self, batch: RemoveBatch<K>) -> Result<()>;
-    fn count(&self) -> Result<usize>;
+    fn update_position(&self, position: Position) -> Result<()> {
+        unimplemented!()
+    }
+    fn update_or_insert_position(&self, position: Position) -> Result<()> {
+        unimplemented!()
+    }
+    fn remove_position(&self, security_id: &str) -> Result<()> {
+        unimplemented!()
+    }
+    fn query_position(&self, security_id: &str) -> Result<Option<Vec<Position>>> {
+        unimplemented!()
+    }
+    fn query_all_position(&self) -> Result<Option<Vec<Position>>> {
+        unimplemented!()
+    }
+}
+
+pub trait QboxStore {
+    fn set(&self, k: &str, v: &str) -> Result<()> {
+        unimplemented!()
+    }
+    fn remove(&self, k: &str, v: &str) -> Result<()> {
+        unimplemented!()
+    }
+    fn get(&self, k: &str, def: &str) -> Result<Option<String>> {
+        unimplemented!()
+    }
+    fn get_all(&self, k: &str) -> Result<Option<Vec<String>>> {
+        unimplemented!()
+    }
+    fn get_prefix(&self, prefix: &str) -> Result<Option<Vec<String>>> {
+        unimplemented!()
+    }
+    fn get_prefixs(&self, prefixs: &[&str]) -> Result<Option<Vec<String>>> {
+        unimplemented!()
+    }
+
+    fn update_symbol(&self) -> Result<Option<Vec<Instrument>>> {
+        unimplemented!()
+    }
+    fn query_one_symbol(&self, security_id: &str) -> Result<Option<Vec<Instrument>>> {
+        unimplemented!()
+    }
+    fn query_symbol_with_prefix(&self, prefix: &str) -> Result<Option<Vec<Instrument>>> {
+        unimplemented!()
+    }
+    fn query_symbol_with_prefixs(&self, prefixs: &[&str]) -> Result<Option<Vec<Instrument>>> {
+        unimplemented!()
+    }
+    fn query_all_symbol(&self) -> Result<Option<Vec<Instrument>>> {
+        unimplemented!()
+    }
 }
