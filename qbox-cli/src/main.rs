@@ -43,7 +43,7 @@ fn main() -> Result<()> {
         let filter: Vec<&str> = filter.iter().map(|sid| &**sid).collect();
         quoter.subscribe(&filter[..]);
     } else {
-        qbox_core::subscribe(topics::QUERY_EVENT, move |_topic, ev| {
+        qbox_core::core::subscribe(topics::QUERY_EVENT, move |_topic, ev| {
             if let Event::Trade(TradeEvent::InstrumentsResponse(instr)) = ev.as_ref() {
                 quoter.subscribe(&[instr.security_id.as_str()]);
             }
@@ -52,7 +52,11 @@ fn main() -> Result<()> {
     // loop {
     //     std::thread::sleep(std::time::Duration::from_secs(5));
     // }
-    app::run_app()
+    qbox_core::core::subscribe(topics::QUOTES_EVENT, move |_, ev| {
+        if let Event::Quote(QuoteEvent::Level1(instr)) = ev.as_ref() {}
+    });
+    let mut app = app::App::new();
+    app::run_app(&mut app)
 
     // loop {
     //     let rs = qbox_core::get_all_level1();

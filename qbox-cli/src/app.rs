@@ -58,19 +58,19 @@ impl App {
     }
 }
 
-pub(crate) fn run_app() -> Result<()> {
+pub(crate) fn run_app(&mut app: App) -> Result<()> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-    let mut app = App::new();
+    qbox_core::core::subscribe(topics::QUOTES_EVENT, move |_, ev| {
+        if let Event::Quote(QuoteEvent::Level1(instr)) = ev.as_ref() {}
+    });
+    // let mut app = App::new();
     let mut last_tick = Instant::now();
     // Input
     loop {
-        if let Some(levels) = qbox_core::get_all_level1() {
-            app.level1 = levels;
-        }
         let tick_rate = Duration::from_millis(200);
         let timeout = tick_rate
             .checked_sub(last_tick.elapsed())

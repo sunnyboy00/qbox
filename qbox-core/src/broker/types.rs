@@ -4,45 +4,6 @@ use std::ops::BitOr;
 use std::ops::{Deref, DerefMut};
 use ta::{Close, High, Low, Open, Volume};
 
-#[doc = "交易事件"]
-#[derive(Debug)]
-pub enum TradeEvent {
-    Offer(Order),
-    OfferResponse(Order),
-    Cancel(Order),
-    CancelResponse(Order),
-    //QueryPosition(String),
-    PositionResponse(Position),
-    // QueryInstrument(Vec<String>),
-    InstrumentsResponse(Instrument),
-    TransactionNotify(Transaction),
-}
-
-#[doc = "行情"]
-#[derive(Debug, Clone, Deserialize, Serialize)]
-pub enum QuoteEvent {
-    //逐笔委托
-    TickToOffer(TickToOffer),
-    //逐笔成交/快照
-    TickToTrade(TickToTrade),
-    //基本行情
-    Level1(Level1),
-    //深度行情
-    Level2(Level2),
-    //k线
-    Bar(Bar),
-}
-
-impl ToString for QuoteEvent {
-    fn to_string(&self) -> String {
-        if let Ok(s) = serde_json::to_string(&self) {
-            s
-        } else {
-            "".to_string()
-        }
-    }
-}
-
 #[doc = "交易所"]
 #[derive(Debug, Copy, Clone, Deserialize, Serialize, Eq, PartialEq, PartialOrd, Ord, Hash)]
 pub enum Exchange {

@@ -1,0 +1,14 @@
+syntax = "proto3";
+package qbox.api.grpc;
+
+message QboxRequest { bytes body = 1; }
+message QboxResponse { bytes body = 1; }
+message Topic { repeated string topic = 1; }
+message QboxEvent { bytes body = 1; }
+message Void {}
+
+service Qbox {
+  rpc Call(QboxRequest) returns (QboxResponse);
+  rpc Send(QboxRequest) returns (Void);
+  rpc Subscribe(Topic) returns (stream QboxEvent);
+}

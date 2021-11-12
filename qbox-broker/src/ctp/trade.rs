@@ -5,6 +5,7 @@ use crossbeam::channel::{self, Sender};
 use ctp_rs::{ffi::*, Configuration, FromCBuf, Response, ResumeType, ToArray, TradeApi, TradeSpi};
 use qbox_core::broker::*;
 use qbox_core::core;
+use qbox_core::core::events::TradeEvent;
 use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::Path;

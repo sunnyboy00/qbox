@@ -4,6 +4,7 @@ use crate::bus::local::LocalBus;
 use crate::bus::{EventBus, Token};
 use anyhow::Result;
 use lazy_static::lazy_static;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use url::Url;
 
@@ -55,16 +56,61 @@ pub fn query_event(msg: TradeEvent) -> Result<()> {
     publish(QUERY_EVENT, Event::Trade(msg))
 }
 
-#[derive(Debug)]
+#[doc = "交易事件"]
+#[derive(Debug, Deserialize, Serialize)]
+pub enum TradeEvent {
+    Offer(Order),
+    OfferResponse(Order),
+    Cancel(Order),
+    CancelResponse(Order),
+    //QueryPosition(String),
+    PositionResponse(Position),
+    // QueryInstrument(Vec<String>),
+    InstrumentsResponse(Instrument),
+    TransactionNotify(Transaction),
+}
+
+#[doc = "行情"]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+pub enum QuoteEvent {
+    //订阅
+    Subscribe(Vec<String>),
+    //取消订阅
+    Unsubscribe(Vec<String>),
+    //逐笔委托
+    TickToOffer(TickToOffer),
+    //逐笔成交/快照
+    TickToTrade(TickToTrade),
+    //基本行情
+    Level1(Level1),
+    //深度行情
+    Level2(Level2),
+    //k线
+    Bar(Bar),
+}
+
+impl ToString for QuoteEvent {
+    fn to_string(&self) -> String {
+        let qe = serde_json::from_slice::<QuoteEvent>(b"aaa").unwrap();
+        if let Ok(s) = serde_json::to_string(&self) {
+            s
+        } else {
+            "".to_string()
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub enum Event {
     //启动
     Startup,
     //关机
     Shutdown,
-    StartQuoter(Url),
-    StopQuoter(Url),
-    StartTrader(Url),
-    StopTrader(Url),
+    StartQuoter(String),
+    StopQuoter(String),
+    StartTrader(String),
+    StopTrader(String),
+
     Trade(TradeEvent),
     Quote(QuoteEvent),
     Log(String),
