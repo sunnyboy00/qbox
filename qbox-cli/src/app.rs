@@ -68,9 +68,9 @@ pub(crate) fn run_app() -> Result<()> {
     let mut last_tick = Instant::now();
     // Input
     loop {
-        if let Some(levels) = qbox_core::get_all_level1() {
-            app.level1 = levels;
-        }
+        // if let Some(levels) = qbox_core::get_all_level1() {
+        //     app.level1 = levels;
+        // }
         let tick_rate = Duration::from_millis(200);
         let timeout = tick_rate
             .checked_sub(last_tick.elapsed())
@@ -128,13 +128,13 @@ fn ui<B: Backend>(f: &mut Frame<B>, app: &mut App) {
         .height(1)
         .bottom_margin(0);
     let rows = app.level1.iter().map(|item| {
-        let name = if let Some(instr) = qbox_core::get_instrument(&item.security_id) {
-            instr.symbol
-        } else {
-            item.security_id.clone()
-        };
+        // let name = if let Some(instr) = qbox_core::get_instrument(&item.security_id) {
+        //     instr.symbol
+        // } else {
+        //     item.security_id.clone()
+        // };
         let cells = vec![
-            Cell::from(name),
+            Cell::from("name"),
             Cell::from(item.security_id.clone()),
             Cell::from(item.average.to_string()),
             Cell::from(item.volume.to_string()),
