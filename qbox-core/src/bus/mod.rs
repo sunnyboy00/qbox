@@ -1,8 +1,8 @@
 pub mod local;
-
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Token {
     pub topic: String,
     pub id: String,

@@ -5,6 +5,7 @@ use crossbeam::channel::{self, Sender};
 use ctp_rs::{ffi::*, Configuration, FromCBuf, QuoteApi, QuoteSpi, Response};
 use qbox_core::broker::*;
 use qbox_core::core;
+use qbox_core::core::events::QuoteEvent;
 use std::collections::HashMap;
 use std::ffi::CString;
 use std::ops::Deref;

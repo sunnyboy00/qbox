@@ -1,5 +1,5 @@
 pub mod memory;
-pub mod rocksdb;
+// pub mod rocksdb;
 pub mod sqlite;
 
 use crate::broker::{
@@ -8,9 +8,6 @@ use crate::broker::{
 use anyhow::Result;
 
 pub trait QuoteStore {
-    fn insert_level1(&self, level1: Level1) -> Result<()> {
-        unimplemented!()
-    }
     fn update_level1(&self, level1: Level1) -> Result<()> {
         unimplemented!()
     }
@@ -84,7 +81,7 @@ pub trait OrderStore {
     fn query_one_tx(&self, txid: u64) -> Result<Option<Transaction>> {
         unimplemented!()
     }
-    fn query_tx(&self, order_id: u64) -> Result<Option<Vec<Transaction>>> {
+    fn query_tx_with_order(&self, order_id: u64) -> Result<Option<Vec<Transaction>>> {
         unimplemented!()
     }
     fn query_tx_with_symbol(&self, security_id: &str) -> Result<Option<Vec<Transaction>>> {
@@ -104,9 +101,7 @@ pub trait OrderStore {
     fn update_position(&self, position: Position) -> Result<()> {
         unimplemented!()
     }
-    fn update_or_insert_position(&self, position: Position) -> Result<()> {
-        unimplemented!()
-    }
+
     fn remove_position(&self, security_id: &str) -> Result<()> {
         unimplemented!()
     }
@@ -122,26 +117,26 @@ pub trait QboxStore {
     fn set(&self, k: &str, v: &str) -> Result<()> {
         unimplemented!()
     }
-    fn remove(&self, k: &str, v: &str) -> Result<()> {
+    fn remove(&self, k: &str) -> Result<()> {
         unimplemented!()
     }
-    fn get(&self, k: &str, def: &str) -> Result<Option<String>> {
+    fn get(&self, k: &str) -> Result<Option<String>> {
         unimplemented!()
     }
-    fn get_all(&self, k: &str) -> Result<Option<Vec<String>>> {
+    fn get_all(&self) -> Result<Option<Vec<(String, String)>>> {
         unimplemented!()
     }
-    fn get_prefix(&self, prefix: &str) -> Result<Option<Vec<String>>> {
+    fn get_prefix(&self, prefix: &str) -> Result<Option<Vec<(String, String)>>> {
         unimplemented!()
     }
-    fn get_prefixs(&self, prefixs: &[&str]) -> Result<Option<Vec<String>>> {
+    fn get_prefixs(&self, prefixs: &[&str]) -> Result<Option<Vec<(String, String)>>> {
         unimplemented!()
     }
 
-    fn update_symbol(&self) -> Result<Option<Vec<Instrument>>> {
+    fn update_symbol(&self, symbol: Instrument) -> Result<()> {
         unimplemented!()
     }
-    fn query_one_symbol(&self, security_id: &str) -> Result<Option<Vec<Instrument>>> {
+    fn query_one_symbol(&self, security_id: &str) -> Result<Option<Instrument>> {
         unimplemented!()
     }
     fn query_symbol_with_prefix(&self, prefix: &str) -> Result<Option<Vec<Instrument>>> {
