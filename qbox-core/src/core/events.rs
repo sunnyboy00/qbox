@@ -77,14 +77,13 @@ pub fn query_event(msg: TradeEvent) -> Result<()> {
 #[derive(Debug, Deserialize, Serialize)]
 pub enum TradeEvent {
     Offer(Order),
-    OfferResponse(Order),
     Cancel(Order),
-    CancelResponse(Order),
-    //QueryPosition(String),
-    PositionResponse(Position),
-    // QueryInstrument(Vec<String>),
-    InstrumentsResponse(Instrument),
-    TransactionNotify(Transaction),
+    OrderChanged(Order),
+    QueryPosition(String),
+    PositionChanged(Position),
+    QueryInstrument(Vec<String>),
+    Instrument(Instrument),
+    Transaction(Transaction),
 }
 
 #[doc = "行情"]
@@ -108,7 +107,6 @@ pub enum QuoteEvent {
 
 impl ToString for QuoteEvent {
     fn to_string(&self) -> String {
-        let qe = serde_json::from_slice::<QuoteEvent>(b"aaa").unwrap();
         if let Ok(s) = serde_json::to_string(&self) {
             s
         } else {

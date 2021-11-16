@@ -23,7 +23,7 @@ pub struct App {
 }
 
 impl App {
-    fn new() -> App {
+    pub fn new() -> App {
         App {
             state: TableState::default(),
             level1: vec![],
@@ -58,15 +58,15 @@ impl App {
     }
 }
 
-pub(crate) fn run_app(&mut app: App) -> Result<()> {
+pub(crate) fn run_app(app: &mut App) -> Result<()> {
     enable_raw_mode()?;
     let mut stdout = io::stdout();
     execute!(stdout, EnterAlternateScreen, EnableMouseCapture)?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-    qbox_core::core::subscribe(topics::QUOTES_EVENT, move |_, ev| {
-        if let Event::Quote(QuoteEvent::Level1(instr)) = ev.as_ref() {}
-    });
+    // qbox_core::core::subscribe(topics::QUOTES_EVENT, move |_, ev| {
+    //     if let Event::Quote(QuoteEvent::Level1(instr)) = ev.as_ref() {}
+    // });
     // let mut app = App::new();
     let mut last_tick = Instant::now();
     // Input
@@ -75,7 +75,7 @@ pub(crate) fn run_app(&mut app: App) -> Result<()> {
         let timeout = tick_rate
             .checked_sub(last_tick.elapsed())
             .unwrap_or_else(|| Duration::from_secs(0));
-        terminal.draw(|f| ui(f, &mut app))?;
+        terminal.draw(|f| ui(f, app))?;
         if crossterm::event::poll(timeout)? {
             if let Event::Key(key) = event::read()? {
                 match key.code {

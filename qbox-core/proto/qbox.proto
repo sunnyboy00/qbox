@@ -2,11 +2,11 @@ syntax = "proto3";
 package qbox.api.grpc;
 
 message QboxRequest {
-  string topic = 1;
+  string path = 1;
   bytes body = 5;
 }
 message QboxResponse {
-  string topic = 1;
+  string path = 1;
   bytes body = 5;
 }
 message QboxStreamEvent {
@@ -29,6 +29,6 @@ message Void {}
 
 service Qbox {
   rpc Call(QboxRequest) returns (QboxResponse);
-  rpc Send(QboxRequest) returns (Void);
+  rpc Send(QboxStreamEvent) returns (Void);
   rpc Subscribe(SubscribeRequest) returns (stream QboxStreamEvent);
 }

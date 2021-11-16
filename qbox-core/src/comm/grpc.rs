@@ -1,13 +1,12 @@
 use crate::core::events;
-use crate::core::topics::*;
-use crossbeam::channel::{self, Receiver, Sender, TryRecvError};
+use crossbeam::channel::{self, Receiver, TryRecvError, TrySendError};
 use futures::Stream;
+use lazy_static::lazy_static;
 use std::pin::Pin;
 use std::task::{Context, Poll};
 #[cfg(unix)]
 use tokio::net::UnixListener;
-use tonic::{transport::Server, Request, Response, Status, Streaming};
-
+use tonic::{Request, Response, Status};
 pub mod pb {
     tonic::include_proto!("qbox.api.grpc");
 }
@@ -19,31 +18,20 @@ use dashmap::DashMap;
 use pb::qbox_server::Qbox;
 use pb::{QboxRequest, QboxResponse, QboxStreamEvent, SubscribeRequest, Void};
 
-pub struct QboxServer {
-    tokens: DashMap<String, DashMap<String, Token, RandomState>, RandomState>,
-    // tx: Sender<Result<QboxStreamEvent, Status>>,
-    // rx: Receiver<Result<QboxStreamEvent, Status>>,
+lazy_static! {
+    static ref TOKENS: DashMap<String, DashMap<String, Token, RandomState>, RandomState> =
+        DashMap::with_hasher(RandomState::new());
 }
-
-impl QboxServer {
-    pub fn new() -> Self {
-        // let (tx, rx) = channel::bounded(1024);
-        Self {
-            tokens: DashMap::with_hasher(RandomState::new()),
-            // tx,
-            // rx,
-        }
-    }
-}
+pub struct QboxServer;
 
 #[tonic::async_trait]
 impl Qbox for QboxServer {
     async fn call(&self, request: Request<QboxRequest>) -> Result<Response<QboxResponse>, Status> {
         match ron::de::from_bytes::<Event>(&request.get_ref().body[..]) {
-            Ok(ev) => match events::call(&request.get_ref().topic, ev) {
+            Ok(ev) => match events::call(&request.get_ref().path, ev) {
                 Ok(ret) => match bincode::serialize(ret.as_ref()) {
                     Ok(b) => Ok(Response::new(QboxResponse {
-                        topic: request.get_ref().topic.clone(),
+                        path: request.get_ref().path.clone(),
                         body: b,
                     })),
                     Err(err) => {
@@ -58,7 +46,7 @@ impl Qbox for QboxServer {
         }
     }
 
-    async fn send(&self, request: Request<QboxRequest>) -> Result<Response<Void>, Status> {
+    async fn send(&self, request: Request<QboxStreamEvent>) -> Result<Response<Void>, Status> {
         match ron::de::from_bytes::<Event>(&request.get_ref().body[..]) {
             Ok(ev) => {
                 if let Err(err) = crate::core::events::publish(&request.get_ref().topic, ev) {
@@ -77,25 +65,33 @@ impl Qbox for QboxServer {
         request: Request<SubscribeRequest>,
     ) -> Result<Response<Self::SubscribeStream>, Status> {
         if let Some(client_id) = request.metadata().get("client_id") {
-            let client_id = client_id.to_str().unwrap();
-            if !self.tokens.contains_key(client_id) {
-                self.tokens
-                    .insert(client_id.into(), DashMap::with_hasher(RandomState::new()));
+            let client_id = client_id.to_str().unwrap().to_owned();
+            if !TOKENS.contains_key(&client_id) {
+                TOKENS.insert(client_id.clone(), DashMap::with_hasher(RandomState::new()));
             }
-            let topics = request.get_ref().topics;
             let (tx, rx) = channel::bounded(1024);
-            let mut subs = self.tokens.get_mut(client_id).unwrap();
-            for topic in topics.iter() {
-                if !subs.contains_key(&topic) {
+            for topic in request.get_ref().topics.iter() {
+                if !TOKENS.get(&client_id).unwrap().contains_key(topic) {
                     let tx = tx.clone();
-                    match events::subscribe(&topic, move |topic, ev| {
+                    let cid = client_id.clone();
+                    match events::subscribe(topic, move |topic, ev| {
                         match bincode::serialize(ev.as_ref()) {
                             Ok(b) => {
-                                if let Err(err) = tx.try_send(Ok(QboxStreamEvent {
+                                match tx.try_send(Ok(QboxStreamEvent {
                                     topic: topic.into(),
                                     body: b,
                                 })) {
-                                    log::error!("tx error {}", err);
+                                    Ok(_) => {}
+                                    Err(TrySendError::Disconnected(_)) => {
+                                        if let Some((_, token)) =
+                                            TOKENS.get(&cid).unwrap().remove(topic)
+                                        {
+                                            events::unsubscribe(&token);
+                                        }
+                                    }
+                                    Err(err) => {
+                                        log::error!("tx.try_send error {}", err);
+                                    }
                                 }
                             }
                             Err(err) => {
@@ -104,7 +100,10 @@ impl Qbox for QboxServer {
                         }
                     }) {
                         Ok(token) => {
-                            subs.insert(topic.to_string(), token);
+                            TOKENS
+                                .get(&client_id)
+                                .unwrap()
+                                .insert(topic.to_string(), token);
                         }
                         Err(err) => {
                             return Err(Status::invalid_argument(format!(
