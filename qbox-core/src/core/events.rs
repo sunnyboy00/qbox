@@ -18,7 +18,11 @@ lazy_static! {
 pub fn broadcast(msg: Event) -> Result<()> {
     BUS.publish(BROADCAST, msg.arced())
 }
-
+#[inline]
+pub fn call<S: AsRef<str>>(topic: S, msg: Event) -> Result<Arc<Event>> {
+    log::trace!("call {} {:?}", topic.as_ref(), msg);
+    BUS.call(topic, msg.arced())
+}
 //发布消息
 #[inline]
 pub fn publish<S: AsRef<str>>(topic: S, msg: Event) -> Result<()> {
@@ -112,13 +116,14 @@ pub enum Event {
     Startup,
     //关机
     Shutdown,
+    Log(String),
     StartQuoter(String),
     StopQuoter(String),
     StartTrader(String),
     StopTrader(String),
+
     Trade(TradeEvent),
     Quote(QuoteEvent),
-    Log(String),
 }
 
 impl Event {
