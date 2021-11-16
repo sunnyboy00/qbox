@@ -13,15 +13,22 @@ message QboxStreamEvent {
   string topic = 1;
   bytes body = 5;
 }
-message Topics { repeated string topics = 1; }
-
-message EventsRequest {}
+// message Topics { repeated string topics = 1; }
+// message SubscribeRequest {
+//   string client_id = 5;
+//   string unit = 6;
+//   repeated string topics = 7;
+// }
+// message UnsubscribeRequest {
+//   string client_id = 5;
+//   string unit = 6;
+//   repeated string topics = 7;
+// }
+message SubscribeRequest { repeated string topics = 7; }
 message Void {}
 
 service Qbox {
   rpc Call(QboxRequest) returns (QboxResponse);
   rpc Send(QboxRequest) returns (Void);
-  rpc Subscribe(Topics) returns (Void);
-  rpc Unsubscribe(Topics) returns (Void);
-  rpc Events(EventsRequest) returns (stream QboxStreamEvent);
+  rpc Subscribe(SubscribeRequest) returns (stream QboxStreamEvent);
 }

@@ -6,7 +6,6 @@ use anyhow::Result;
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
-use url::Url;
 
 lazy_static! {
     //消息总线
@@ -44,6 +43,14 @@ pub fn subscribe<S: AsRef<str>>(
 pub fn unsubscribe(token: &Token) {
     log::trace!("unsubscribe {:?}", token);
     BUS.unsubscribe(token)
+}
+
+#[inline]
+pub(crate) fn path<S: AsRef<str>>(
+    path: S,
+    f: impl Fn(&str, Arc<Event>) -> Result<Arc<Event>> + Send + Sync + 'static,
+) -> Result<()> {
+    BUS.register_fn(path, f)
 }
 
 #[inline]

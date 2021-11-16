@@ -1,4 +1,5 @@
 use crate::core::events;
+use crate::core::topics::*;
 use crossbeam::channel::{self, Receiver, Sender, TryRecvError};
 use futures::Stream;
 use std::pin::Pin;
@@ -16,21 +17,21 @@ use crate::core::Event;
 use ahash::RandomState;
 use dashmap::DashMap;
 use pb::qbox_server::Qbox;
-use pb::{EventsRequest, QboxRequest, QboxResponse, QboxStreamEvent, Topics, Void};
+use pb::{QboxRequest, QboxResponse, QboxStreamEvent, SubscribeRequest, Void};
 
 pub struct QboxServer {
-    tokens: DashMap<String, Token, RandomState>,
-    tx: Sender<Result<QboxStreamEvent, Status>>,
-    rx: Receiver<Result<QboxStreamEvent, Status>>,
+    tokens: DashMap<String, DashMap<String, Token, RandomState>, RandomState>,
+    // tx: Sender<Result<QboxStreamEvent, Status>>,
+    // rx: Receiver<Result<QboxStreamEvent, Status>>,
 }
 
 impl QboxServer {
     pub fn new() -> Self {
-        let (tx, rx) = channel::bounded(1024);
+        // let (tx, rx) = channel::bounded(1024);
         Self {
             tokens: DashMap::with_hasher(RandomState::new()),
-            tx,
-            rx,
+            // tx,
+            // rx,
         }
     }
 }
@@ -69,71 +70,69 @@ impl Qbox for QboxServer {
         Ok(Response::new(Void {}))
     }
 
-    async fn subscribe(&self, request: Request<Topics>) -> Result<Response<Void>, Status> {
-        for topic in request.get_ref().topics.iter() {
-            if !self.tokens.contains_key(topic) {
-                let tx = self.tx.clone();
-                match events::subscribe(topic, move |topic, ev| {
-                    match bincode::serialize(ev.as_ref()) {
-                        Ok(b) => {
-                            if let Err(err) = tx.try_send(Ok(QboxStreamEvent {
-                                topic: topic.into(),
-                                body: b,
-                            })) {
-                                log::error!("tx error {}", err);
+    #[doc = "订阅服务器事件"]
+    type SubscribeStream = Pin<Box<dyn Stream<Item = Result<QboxStreamEvent, Status>> + Send>>; //mpsc::Receiver<Result<QboxEvent, Status>>;
+    async fn subscribe(
+        &self,
+        request: Request<SubscribeRequest>,
+    ) -> Result<Response<Self::SubscribeStream>, Status> {
+        if let Some(client_id) = request.metadata().get("client_id") {
+            let client_id = client_id.to_str().unwrap();
+            if !self.tokens.contains_key(client_id) {
+                self.tokens
+                    .insert(client_id.into(), DashMap::with_hasher(RandomState::new()));
+            }
+            let topics = request.get_ref().topics;
+            let (tx, rx) = channel::bounded(1024);
+            let mut subs = self.tokens.get_mut(client_id).unwrap();
+            for topic in topics.iter() {
+                if !subs.contains_key(&topic) {
+                    let tx = tx.clone();
+                    match events::subscribe(&topic, move |topic, ev| {
+                        match bincode::serialize(ev.as_ref()) {
+                            Ok(b) => {
+                                if let Err(err) = tx.try_send(Ok(QboxStreamEvent {
+                                    topic: topic.into(),
+                                    body: b,
+                                })) {
+                                    log::error!("tx error {}", err);
+                                }
+                            }
+                            Err(err) => {
+                                log::error!("bincode::serialize error {}", err);
                             }
                         }
+                    }) {
+                        Ok(token) => {
+                            subs.insert(topic.to_string(), token);
+                        }
                         Err(err) => {
-                            log::error!("bincode::serialize error {}", err);
+                            return Err(Status::invalid_argument(format!(
+                                "subscribe error: {}",
+                                err
+                            )))
                         }
                     }
-                }) {
-                    Ok(token) => {
-                        self.tokens.insert(topic.into(), token);
-                    }
-                    Err(err) => {
-                        return Err(Status::invalid_argument(format!(
-                            "subscribe error: {}",
-                            err
-                        )))
-                    }
                 }
             }
+            Ok(Response::new(
+                Box::pin(EvStream(rx)) as Self::SubscribeStream
+            ))
+        } else {
+            return Err(Status::invalid_argument("client_id is required"));
         }
-
-        Ok(Response::new(Void {}))
     }
+}
 
-    async fn unsubscribe(&self, request: Request<Topics>) -> Result<Response<Void>, Status> {
-        for topic in request.get_ref().topics.iter() {
-            self.tokens.remove(topic);
+struct EvStream(Receiver<Result<QboxStreamEvent, Status>>);
+impl Stream for EvStream {
+    type Item = Result<QboxStreamEvent, Status>;
+    fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+        let rx = &mut self.0;
+        match rx.try_recv() {
+            Ok(ev) => Poll::Ready(Some(ev)),
+            Err(TryRecvError::Disconnected) => Poll::Ready(None),
+            Err(TryRecvError::Empty) => Poll::Pending,
         }
-        Ok(Response::new(Void {}))
-    }
-
-    #[doc = "订阅服务器事件"]
-    type EventsStream = Pin<Box<dyn Stream<Item = Result<QboxStreamEvent, Status>> + Send>>; //mpsc::Receiver<Result<QboxEvent, Status>>;
-    async fn events(
-        &self,
-        _: Request<EventsRequest>,
-    ) -> Result<Response<Self::EventsStream>, Status> {
-        struct EvStream(Receiver<Result<QboxStreamEvent, Status>>);
-        impl Stream for EvStream {
-            type Item = Result<QboxStreamEvent, Status>;
-            fn poll_next(
-                mut self: Pin<&mut Self>,
-                cx: &mut Context<'_>,
-            ) -> Poll<Option<Self::Item>> {
-                let rx = &mut self.0;
-                match rx.try_recv() {
-                    Ok(ev) => Poll::Ready(Some(ev)),
-                    Err(TryRecvError::Disconnected) => Poll::Ready(None),
-                    Err(TryRecvError::Empty) => Poll::Pending,
-                }
-            }
-        }
-        Ok(Response::new(
-            Box::pin(EvStream(self.rx.clone())) as Self::EventsStream
-        ))
     }
 }
