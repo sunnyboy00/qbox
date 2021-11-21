@@ -8,3 +8,5 @@ pub const TRADES_EVENT: &str = "__/trades/event";
 pub const QUOTES_EVENT: &str = "__/quotes/event";
 //查询返回主题
 pub const QUERY_EVENT: &str = "__/query/event";
+//查询返回主题
+pub const CALL_EVENT: &str = "__/call/event";
