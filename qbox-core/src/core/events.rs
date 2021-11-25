@@ -10,6 +10,7 @@ use std::sync::Arc;
 lazy_static! {
     //消息总线
     static ref BUS:LocalBus<Arc<Event>>=LocalBus::new();
+
 }
 
 //广播消息
@@ -60,17 +61,17 @@ pub fn log(msg: String) -> Result<()> {
 
 #[inline]
 pub fn trade_event(msg: TradeEvent) -> Result<()> {
-    publish(TRADES_EVENT, Event::Trade(msg))
+    publish(TRADES_EVENT, Event::TradeEvent(msg))
 }
 
 #[inline]
 pub fn quotes_event(msg: QuoteEvent) -> Result<()> {
-    publish(QUOTES_EVENT, Event::Quote(msg))
+    publish(QUOTES_EVENT, Event::QuoteEvent(msg))
 }
 
 #[inline]
 pub fn query_event(msg: TradeEvent) -> Result<()> {
-    publish(QUERY_EVENT, Event::Trade(msg))
+    publish(QUERY_EVENT, Event::TradeEvent(msg))
 }
 
 #[doc = "交易事件"]
@@ -78,10 +79,10 @@ pub fn query_event(msg: TradeEvent) -> Result<()> {
 pub enum TradeEvent {
     Offer(Order),
     Cancel(Order),
-    OrderChanged(Order),
     QueryPosition(String),
-    PositionChanged(Position),
     QueryInstrument(Vec<String>),
+    OrderChanged(Order),
+    PositionChanged(Position),
     Instrument(Instrument),
     Transaction(Transaction),
 }
@@ -127,8 +128,8 @@ pub enum Event {
     StartTrader(String),
     StopTrader(String),
 
-    Trade(TradeEvent),
-    Quote(QuoteEvent),
+    TradeEvent(TradeEvent),
+    QuoteEvent(QuoteEvent),
 }
 
 impl Event {
