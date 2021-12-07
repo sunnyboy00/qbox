@@ -20,7 +20,7 @@ pub fn strategies() -> Vec<&'static str> {
 pub fn register_driver(name: &'static str, driver: impl Driver + 'static) -> Result<()> {
     let mut drivers = DRIVERS.lock();
     if drivers.contains_key(name) {
-        return Err(anyhow::anyhow!("driver `{}` existed"));
+        return Err(anyhow::anyhow!("driver `{}` existed", name));
     }
     drivers.insert(name, Box::new(driver));
     Ok(())
